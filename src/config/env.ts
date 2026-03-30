@@ -1,0 +1,34 @@
+import path from "node:path";
+
+import { z } from "zod";
+
+const envSchema = z.object({
+  HOST: z.string().min(1).default("0.0.0.0"),
+  PORT: z.coerce.number().int().positive().default(8080),
+  DATA_DIR: z.string().min(1).default(path.resolve(process.cwd(), "data")),
+  HOSTS_JSON: z.string().optional(),
+  BRIDGE_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2_000),
+  POLL_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+});
+
+export type Env = z.infer<typeof envSchema> & {
+  JOBS_FILE_PATH: string;
+  AUDIT_LOG_PATH: string;
+};
+
+export function loadEnv(overrides: Partial<NodeJS.ProcessEnv> = {}): Env {
+  const parsed = envSchema.parse({
+    ...process.env,
+    ...overrides,
+  });
+
+  const dataDir = path.resolve(parsed.DATA_DIR);
+
+  return {
+    ...parsed,
+    DATA_DIR: dataDir,
+    JOBS_FILE_PATH: path.join(dataDir, "jobs.json"),
+    AUDIT_LOG_PATH: path.join(dataDir, "audit.log.jsonl"),
+  };
+}
