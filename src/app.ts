@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import { BridgeClient } from "./clients/bridge-client";
 import { loadEnv, type Env } from "./config/env";
+import { registerMcpRoutes } from "./mcp/routes";
 import { createHostRegistry, type HostRegistry } from "./registry/host-registry";
 import { createToolRegistry, type ToolRegistry } from "./registry/tool-registry";
 import { registerExecuteRoute } from "./routes/execute";
@@ -54,6 +55,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   await registerHealthRoute(app, { hostRegistry, toolRegistry });
+  await registerMcpRoutes(app, { executionService });
   await registerExecuteRoute(app, { executionService });
   await registerJobsRoute(app, { jobStore, pollingService });
   await pollingService.resumePendingJobs();

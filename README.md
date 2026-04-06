@@ -1,10 +1,31 @@
 # TAD BIM Host Runner
 
-Minimal host-runner service that sits between OpenClaw and machine-specific bridges. The runner only accepts structured tool requests, validates them against a whitelist, routes them to a configured bridge host, persists async job state locally, and returns clean envelopes.
+Phase 1 Revit MCP Gateway that sits between OpenClaw or other clients and Windows-based machine bridges. The gateway keeps the existing execution engine, host registry, bridge client, local job store, polling, and audit trail, while adding an MCP-friendly entry layer for discipline-based Revit tools.
+
+## Phase 1 Architecture
+
+Current execution chain:
+
+1. client calls a friendly MCP-facing tool on this gateway
+2. the gateway validates structured input and maps it to the existing internal execution envelope
+3. the existing execution service dispatches to the configured bridge host
+4. the Windows bridge forwards to the Revit add-in
+5. async work is still tracked locally through `data/jobs.json` and `GET /jobs/:jobId`
+
+Phase 1 stays deterministic by design:
+
+- no LLM call is made for `mcp-arch-system-health`
+- no LLM call is made for `mcp-arch-walls-create`
+- `OLLAMA_*` env vars are accepted for future modes only and are not part of the critical execution path
 
 ## Scope
 
-Implemented MVP tools:
+Implemented MCP-facing tools:
+
+- `mcp-arch-system-health` -> internal `revit_ping`
+- `mcp-arch-walls-create` -> internal `revit_create_wall`
+
+Implemented internal bridge tools:
 
 - `revit_ping` via a synchronous bridge call
 - `revit_create_wall` via async submit + local job persistence + polling
@@ -36,9 +57,85 @@ The repo started empty, so the persistence choice is intentionally lightweight a
 
 ## Endpoints
 
+### `POST /mcp/tools/:toolName`
+
+MCP-facing tool execution entrypoint. In Phase 1 the gateway exposes:
+
+- `mcp-arch-system-health`
+- `mcp-arch-walls-create`
+
+External MCP-facing contract:
+
+- tool name is carried in the route
+- payloads stay friendly and typed
+- the gateway translates them to the existing internal `/execute` contract
+- the response includes both the friendly `tool` name and the mapped `internalTool`
+
+`mcp-arch-system-health` request:
+
+```json
+{
+  "targetHost": "tad-bim-01"
+}
+```
+
+`mcp-arch-walls-create` request using `length`:
+
+```json
+{
+  "targetHost": "tad-bim-01",
+  "length": 15,
+  "wallType": "Generic - 200mm",
+  "level": "Level 1",
+  "height": 3
+}
+```
+
+`mcp-arch-walls-create` request using coordinates:
+
+```json
+{
+  "targetHost": "tad-bim-01",
+  "start": { "x": 0, "y": 0, "z": 0 },
+  "end": { "x": 0, "y": 15, "z": 0 },
+  "wallType": "Generic - 200mm",
+  "level": "Level 1",
+  "height": 3
+}
+```
+
+Wall mapping rules:
+
+- `documentPath` is always mapped internally to `"active"`
+- if `length` is provided, the gateway creates:
+  - `start = { "x": 0, "y": 0, "z": 0 }`
+  - `end = { "x": 0, "y": length, "z": 0 }`
+- `level` maps to `levelName`
+- `height` maps to `unconnectedHeight`
+- `wallType` defaults to `"first_available_generic"`
+- `level` defaults to `"Level 1"`
+- `height` defaults to `3`
+
+Example response:
+
+```json
+{
+  "requestId": "req_123",
+  "jobId": null,
+  "status": "completed",
+  "tool": "mcp-arch-system-health",
+  "internalTool": "revit_ping",
+  "targetHost": "tad-bim-01",
+  "result": {
+    "ok": true
+  },
+  "error": null
+}
+```
+
 ### `POST /execute`
 
-Request envelope:
+Internal execution envelope preserved for debugging and transition:
 
 ```json
 {
@@ -56,7 +153,7 @@ Request envelope:
 }
 ```
 
-Validation performed before execution:
+The internal path still performs:
 
 - envelope shape
 - tool whitelist
@@ -131,6 +228,34 @@ Returns the persisted local async job record:
 
 Returns a minimal service health response plus the configured tools and hosts.
 
+## Internal vs MCP Contracts
+
+- MCP-facing tools:
+  - `mcp-arch-system-health` -> `revit_ping`
+  - `mcp-arch-walls-create` -> `revit_create_wall`
+- Internal bridge-facing tools remain:
+  - `revit_ping`
+  - `revit_create_wall`
+- The gateway does not change the current bridge submit or polling paths:
+  - `POST /tools/revit_ping`
+  - `POST /tools/revit_create_wall`
+  - `GET /jobs/:jobId`
+
+## Discipline-Based Naming
+
+The MCP-facing namespace is organized to scale by discipline and element family:
+
+- architecture:
+  - `mcp-arch-system-health`
+  - `mcp-arch-walls-create`
+  - reserved structure for `mcp-arch-floors-*`
+  - reserved structure for `mcp-arch-roofs-*`
+- structure:
+  - reserved structure for `mcp-str-columns-*`
+  - reserved structure for `mcp-str-beams-*`
+- MEP:
+  - reserved structure for `mcp-mep-pipes-*`
+
 ## Configured Tools
 
 Current tool registry:
@@ -159,8 +284,9 @@ Current tool registry:
 Adding a future tool only needs:
 
 1. a Zod args schema
-2. a new tool registry entry
-3. bridge path mapping
+2. a new MCP-facing tool definition when needed
+3. a new internal tool registry entry
+4. bridge path mapping
 
 ## Configured Hosts
 
@@ -295,6 +421,12 @@ Environment variables:
 - `BRIDGE_REQUEST_TIMEOUT_MS`
 - `POLL_INTERVAL_MS`
 - `POLL_TIMEOUT_MS`
+- `OLLAMA_BASE_URL`
+  - default: `http://127.0.0.1:11434`
+  - future natural-language mode only, unused in Phase 1 execution
+- `OLLAMA_MODEL`
+  - default: `qwen3:14b`
+  - future natural-language mode only, unused in Phase 1 execution
 
 Production build:
 
@@ -317,8 +449,41 @@ Covered test cases:
 - unknown tool rejection
 - sync `revit_ping` end-to-end execution
 - async `revit_create_wall` submit, polling, and persisted completion
+- MCP `mcp-arch-system-health` -> `revit_ping` mapping
+- MCP `mcp-arch-walls-create` length mapping and async `/jobs/:jobId` flow
+- MCP `mcp-arch-walls-create` coordinate-based input validation and dispatch
 
 ## Manual Verification
+
+Example MCP health request:
+
+```bash
+curl -X POST http://127.0.0.1:8080/mcp/tools/mcp-arch-system-health \
+  -H "content-type: application/json" \
+  -d '{
+    "targetHost": "tad-bim-01"
+  }'
+```
+
+Example MCP wall request:
+
+```bash
+curl -X POST http://127.0.0.1:8080/mcp/tools/mcp-arch-walls-create \
+  -H "content-type: application/json" \
+  -d '{
+    "targetHost": "tad-bim-01",
+    "length": 15,
+    "wallType": "Generic - 200mm",
+    "level": "Level 1",
+    "height": 3
+  }'
+```
+
+Then poll the local job:
+
+```bash
+curl http://127.0.0.1:8080/jobs/<local-job-id>
+```
 
 Example sync request:
 

@@ -185,16 +185,20 @@ export class BridgeClient {
     const value = status?.toLowerCase();
 
     if (!value) {
-      if (body?.error) {
-        return "failed";
-      }
+  if (body?.error) {
+    return "failed";
+  }
 
-      if (body?.result !== undefined) {
-        return "completed";
-      }
+  if (body?.ok === true) {
+    return "completed";
+  }
 
-      return "running";
-    }
+  if (body?.result !== undefined) {
+    return "completed";
+  }
+
+  return "running";
+}
 
     if (value === "accepted" || value === "queued" || value === "submitted") {
       return "accepted";
