@@ -2,7 +2,7 @@
 
 ## Role of This Repository
 
-`TAD-BIM-Host-Runner` is now the single backend for the current system. It is responsible for:
+`apps/mcp` is now the single backend for the current system inside this workspace. It is responsible for:
 
 - MCP-facing Revit tool routing
 - the existing internal execution pipeline
@@ -40,7 +40,7 @@ The bridge-facing contract is unchanged:
 
 ## Backend Layout
 
-Current source layout is organized around layers:
+Current backend source layout under `apps/mcp` is organized around layers:
 
 - `src/app.ts`, `src/server.ts`
   - bootstrap, dependency wiring, Fastify startup

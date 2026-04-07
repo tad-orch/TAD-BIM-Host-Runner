@@ -6,7 +6,7 @@ SQLite is now the primary persistence layer.
 
 - env var: `SQLITE_DB_PATH`
 - default: `${DATA_DIR}/app.db`
-- default on disk in this repo: `data/app.db`
+- default on disk in this repo: `apps/mcp/data/app.db`
 
 Schema bootstrap runs automatically on startup through:
 
