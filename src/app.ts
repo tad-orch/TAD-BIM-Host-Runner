@@ -1,14 +1,23 @@
 import Fastify, { type FastifyInstance } from "fastify";
 
+import { registerConversationsRoutes } from "./api/routes/conversations";
+import { registerExecuteRoute } from "./api/routes/execute";
+import { registerHealthRoute } from "./api/routes/health";
+import { registerHostsRoute } from "./api/routes/hosts";
+import { registerJobsRoute } from "./api/routes/jobs";
+import { registerMcpRoutes } from "./api/routes/mcp";
 import { BridgeClient } from "./clients/bridge-client";
 import { loadEnv, type Env } from "./config/env";
-import { registerMcpRoutes } from "./mcp/routes";
+import { createDbClient, type DbClient } from "./db/client";
+import { AuditRepository } from "./db/repositories/audit-repo";
+import { ConversationsRepository } from "./db/repositories/conversations-repo";
+import { HostsRepository } from "./db/repositories/hosts-repo";
+import { JobsRepository } from "./db/repositories/jobs-repo";
+import { MessagesRepository } from "./db/repositories/messages-repo";
 import { createHostRegistry, type HostRegistry } from "./registry/host-registry";
 import { createToolRegistry, type ToolRegistry } from "./registry/tool-registry";
-import { registerExecuteRoute } from "./routes/execute";
-import { registerHealthRoute } from "./routes/health";
-import { registerJobsRoute } from "./routes/jobs";
 import { AuditService } from "./services/audit-service";
+import { ChatService } from "./services/chat-service";
 import { ExecutionService } from "./services/execution-service";
 import { JobStore } from "./services/job-store";
 import { PollingService } from "./services/polling-service";
@@ -16,20 +25,30 @@ import { PollingService } from "./services/polling-service";
 export interface BuildAppOptions {
   env?: Env;
   envOverrides?: Partial<NodeJS.ProcessEnv>;
+  dbClient?: DbClient;
   hostRegistry?: HostRegistry;
   toolRegistry?: ToolRegistry;
   bridgeClient?: BridgeClient;
   jobStore?: JobStore;
   auditService?: AuditService;
+  chatService?: ChatService;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const env = options.env ?? loadEnv(options.envOverrides);
-  const hostRegistry = options.hostRegistry ?? createHostRegistry(env);
+  const ownsDbClient = !options.dbClient;
+  const dbClient = options.dbClient ?? createDbClient(env);
+  const hostsRepository = new HostsRepository(dbClient.db);
+  const jobsRepository = new JobsRepository(dbClient.db);
+  const auditRepository = new AuditRepository(dbClient.db);
+  const conversationsRepository = new ConversationsRepository(dbClient.db);
+  const messagesRepository = new MessagesRepository(dbClient.db);
+  const hostRegistry = options.hostRegistry ?? createHostRegistry(env, hostsRepository);
   const toolRegistry = options.toolRegistry ?? createToolRegistry(env);
   const bridgeClient = options.bridgeClient ?? new BridgeClient();
-  const jobStore = options.jobStore ?? new JobStore(env.JOBS_FILE_PATH);
-  const auditService = options.auditService ?? new AuditService(env.AUDIT_LOG_PATH);
+  const jobStore = options.jobStore ?? new JobStore(jobsRepository);
+  const auditService = options.auditService ?? new AuditService(auditRepository);
+  const chatService = options.chatService ?? new ChatService(conversationsRepository, messagesRepository);
 
   await jobStore.init();
   await auditService.init();
@@ -54,7 +73,15 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     logger: false,
   });
 
+  app.addHook("onClose", async () => {
+    if (ownsDbClient) {
+      dbClient.close();
+    }
+  });
+
   await registerHealthRoute(app, { hostRegistry, toolRegistry });
+  await registerHostsRoute(app, { hostsRepository });
+  await registerConversationsRoutes(app, { chatService });
   await registerMcpRoutes(app, { executionService });
   await registerExecuteRoute(app, { executionService });
   await registerJobsRoute(app, { jobStore, pollingService });

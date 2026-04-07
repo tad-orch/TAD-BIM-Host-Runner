@@ -6,6 +6,7 @@ const envSchema = z.object({
   HOST: z.string().min(1).default("0.0.0.0"),
   PORT: z.coerce.number().int().positive().default(8080),
   DATA_DIR: z.string().min(1).default(path.resolve(process.cwd(), "data")),
+  SQLITE_DB_PATH: z.string().min(1).optional(),
   HOSTS_JSON: z.string().optional(),
   BRIDGE_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2_000),
@@ -15,8 +16,7 @@ const envSchema = z.object({
 });
 
 export type Env = z.infer<typeof envSchema> & {
-  JOBS_FILE_PATH: string;
-  AUDIT_LOG_PATH: string;
+  SQLITE_DB_PATH: string;
 };
 
 export function loadEnv(overrides: Partial<NodeJS.ProcessEnv> = {}): Env {
@@ -26,11 +26,11 @@ export function loadEnv(overrides: Partial<NodeJS.ProcessEnv> = {}): Env {
   });
 
   const dataDir = path.resolve(parsed.DATA_DIR);
+  const sqliteDbPath = path.resolve(parsed.SQLITE_DB_PATH ?? path.join(dataDir, "app.db"));
 
   return {
     ...parsed,
     DATA_DIR: dataDir,
-    JOBS_FILE_PATH: path.join(dataDir, "jobs.json"),
-    AUDIT_LOG_PATH: path.join(dataDir, "audit.log.jsonl"),
+    SQLITE_DB_PATH: sqliteDbPath,
   };
 }

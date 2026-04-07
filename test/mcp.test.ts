@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import Database from "better-sqlite3";
 import Fastify from "fastify";
 import type { AddressInfo } from "node:net";
 
@@ -19,6 +20,10 @@ function getBaseUrl(portSource: AddressInfo | string | null): string {
   }
 
   return `http://127.0.0.1:${portSource.port}`;
+}
+
+function getDbPath(dataDir: string): string {
+  return path.join(dataDir, "app.db");
 }
 
 async function waitFor<T>(
@@ -233,9 +238,31 @@ test("POST /mcp/tools/mcp-arch-walls-create maps length input to revit_create_wa
       elementId: 9001,
     });
 
-    const persistedJobs = JSON.parse(await fs.readFile(path.join(dataDir, "jobs.json"), "utf8"));
-    assert.equal(persistedJobs.jobs[body.jobId].status, "completed");
-    assert.equal(persistedJobs.jobs[body.jobId].remoteJobId, "bridge-wall-456");
+    const db = new Database(getDbPath(dataDir), { readonly: true });
+
+    try {
+      const persistedJob = db
+        .prepare(
+          `
+            SELECT status, remote_job_id
+            FROM jobs
+            WHERE job_id = ?
+          `,
+        )
+        .get(body.jobId) as
+        | {
+            status: string;
+            remote_job_id: string;
+          }
+        | undefined;
+
+      assert.deepEqual(persistedJob, {
+        status: "completed",
+        remote_job_id: "bridge-wall-456",
+      });
+    } finally {
+      db.close();
+    }
   } finally {
     await app.close();
     await bridge.close();

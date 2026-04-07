@@ -2,6 +2,7 @@ import { hostDefinitionSchema } from "../schemas/envelope";
 import type { Env } from "../config/env";
 import type { HostDefinition, ToolName } from "../types";
 import { AppError } from "../lib/errors";
+import { HostsRepository } from "../db/repositories/hosts-repo";
 
 const defaultHosts = (_env: Env): HostDefinition[] => [
   {
@@ -49,15 +50,31 @@ export class HostRegistry {
   }
 }
 
-export function createHostRegistry(env: Env): HostRegistry {
-  const configuredHosts = env.HOSTS_JSON
-    ? hostDefinitionSchema.array().parse(JSON.parse(env.HOSTS_JSON))
-    : defaultHosts(env);
+function resolveBootstrapHosts(env: Env): HostDefinition[] {
+  if (env.HOSTS_JSON) {
+    return hostDefinitionSchema.array().parse(JSON.parse(env.HOSTS_JSON));
+  }
+
+  return defaultHosts(env);
+}
+
+export function createHostRegistry(env: Env, hostsRepository: HostsRepository): HostRegistry {
+  if (hostsRepository.countAll() === 0) {
+    hostsRepository.upsertMany(resolveBootstrapHosts(env));
+  }
 
   const hosts = new Map<string, HostDefinition>();
+  const configuredHosts = hostsRepository.list({ activeOnly: true });
 
   for (const host of configuredHosts) {
-    hosts.set(host.id, host);
+    hosts.set(host.id, {
+      id: host.id,
+      baseUrl: host.baseUrl,
+      machineType: host.machineType,
+      capabilities: host.capabilities,
+      enabledTools: host.enabledTools,
+      headers: host.headers,
+    });
   }
 
   return new HostRegistry(hosts);

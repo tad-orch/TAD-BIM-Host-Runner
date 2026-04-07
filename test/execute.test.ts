@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import Database from "better-sqlite3";
 import Fastify from "fastify";
 import type { AddressInfo } from "node:net";
 
@@ -19,6 +20,10 @@ function getBaseUrl(portSource: AddressInfo | string | null): string {
   }
 
   return `http://127.0.0.1:${portSource.port}`;
+}
+
+function getDbPath(dataDir: string): string {
+  return path.join(dataDir, "app.db");
 }
 
 async function waitFor<T>(
@@ -138,15 +143,56 @@ test("POST /execute completes revit_ping synchronously and records audit data", 
       error: null,
     });
 
-    const persistedJobs = JSON.parse(await fs.readFile(path.join(dataDir, "jobs.json"), "utf8"));
-    assert.equal(persistedJobs.syncExecutions.req_ping_sync.status, "completed");
+    const db = new Database(getDbPath(dataDir), { readonly: true });
 
-    const auditLines = (await fs.readFile(path.join(dataDir, "audit.log.jsonl"), "utf8"))
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line));
-    assert.equal(auditLines.length, 1);
-    assert.equal(auditLines[0].outcome, "completed");
+    try {
+      const persistedExecution = db
+        .prepare(
+          `
+            SELECT status, mode, tool, request_id
+            FROM jobs
+            WHERE request_id = ? AND mode = 'sync'
+          `,
+        )
+        .get("req_ping_sync") as
+        | {
+            status: string;
+            mode: string;
+            tool: string;
+            request_id: string;
+          }
+        | undefined;
+
+      assert.deepEqual(persistedExecution, {
+        status: "completed",
+        mode: "sync",
+        tool: "revit_ping",
+        request_id: "req_ping_sync",
+      });
+
+      const auditRow = db
+        .prepare(
+          `
+            SELECT outcome, request_id
+            FROM audit_logs
+            ORDER BY id ASC
+            LIMIT 1
+          `,
+        )
+        .get() as
+        | {
+            outcome: string;
+            request_id: string;
+          }
+        | undefined;
+
+      assert.deepEqual(auditRow, {
+        outcome: "completed",
+        request_id: "req_ping_sync",
+      });
+    } finally {
+      db.close();
+    }
   } finally {
     await app.close();
     await bridge.close();
@@ -250,9 +296,31 @@ test("POST /execute accepts revit_create_wall and GET /jobs/:jobId returns the c
       elementId: 4567,
     });
 
-    const persistedJobs = JSON.parse(await fs.readFile(path.join(dataDir, "jobs.json"), "utf8"));
-    assert.equal(persistedJobs.jobs[jobId].status, "completed");
-    assert.equal(persistedJobs.jobs[jobId].remoteJobId, "bridge-wall-123");
+    const db = new Database(getDbPath(dataDir), { readonly: true });
+
+    try {
+      const persistedJob = db
+        .prepare(
+          `
+            SELECT status, remote_job_id
+            FROM jobs
+            WHERE job_id = ?
+          `,
+        )
+        .get(jobId) as
+        | {
+            status: string;
+            remote_job_id: string;
+          }
+        | undefined;
+
+      assert.deepEqual(persistedJob, {
+        status: "completed",
+        remote_job_id: "bridge-wall-123",
+      });
+    } finally {
+      db.close();
+    }
   } finally {
     await app.close();
     await bridge.close();

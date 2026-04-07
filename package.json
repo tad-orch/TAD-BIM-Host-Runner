@@ -2,12 +2,13 @@
   "name": "tad-bim-host-runner",
   "version": "0.1.0",
   "private": true,
-  "description": "Minimal BIM host runner between OpenClaw and machine bridges.",
+  "description": "Single backend and Revit MCP gateway between clients and execution-node bridges.",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && mkdir -p dist/db && cp src/db/schema.sql dist/db/schema.sql",
     "start": "node dist/server.js",
+    "smoke:mcp": "bash scripts/smoke-mcp.sh",
     "test": "tsx --test test/**/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -15,11 +16,13 @@
     "node": ">=20"
   },
   "dependencies": {
+    "better-sqlite3": "^12.8.0",
     "dotenv": "^17.3.1",
     "fastify": "^5.6.1",
     "zod": "^4.1.5"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.6.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.3"

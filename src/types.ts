@@ -21,6 +21,12 @@ export interface HostDefinition {
   headers?: Record<string, string>;
 }
 
+export interface StoredHostRecord extends HostDefinition {
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface JobRecord {
   jobId: string;
   remoteJobId: string;
@@ -74,6 +80,25 @@ export interface AuditEntry {
   durationMs?: number;
   argsSummary?: Record<string, unknown>;
   errorSummary?: ErrorSummary | null;
+}
+
+export interface ConversationRecord {
+  id: string;
+  title: string | null;
+  userId: string | null;
+  targetHost: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MessageRecord {
+  id: string;
+  conversationId: string;
+  role: string;
+  content: string;
+  toolName: string | null;
+  jobId: string | null;
+  createdAt: string;
 }
 
 export interface ExecuteResponse {
