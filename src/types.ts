@@ -47,6 +47,33 @@ export interface JobRecord {
   error: ErrorSummary | null;
 }
 
+export interface StoredJobRecord {
+  jobId: string;
+  requestId: string;
+  remoteJobId: string | null;
+  pollPath: string | null;
+  tool: string;
+  internalTool: string | null;
+  targetHost: string;
+  mode: "sync" | "async";
+  status: JobStatus;
+  source: string | null;
+  sessionId: string | null;
+  args: Record<string, unknown>;
+  result: unknown | null;
+  error: ErrorSummary | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  durationMs: number | null;
+}
+
+export interface JobQueryFilters {
+  status?: JobStatus;
+  targetHost?: string;
+  tool?: string;
+}
+
 export interface SyncExecutionRecord {
   requestId: string;
   tool: ToolName;
@@ -98,6 +125,31 @@ export interface MessageRecord {
   content: string;
   toolName: string | null;
   jobId: string | null;
+  createdAt: string;
+}
+
+export interface ConversationCreateInput {
+  id: string;
+  title: string | null;
+  userId: string | null;
+  targetHost: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConversationUpdateInput {
+  title?: string | null;
+  targetHost?: string | null;
+  updatedAt: string;
+}
+
+export interface MessageCreateInput {
+  id: string;
+  conversationId: string;
+  role: string;
+  content: string;
+  toolName?: string | null;
+  jobId?: string | null;
   createdAt: string;
 }
 

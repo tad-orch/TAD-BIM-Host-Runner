@@ -1,14 +1,12 @@
 import type { FastifyInstance } from "fastify";
 
 import { createRequestId } from "../../lib/ids";
-import { AppError, formatZodIssues, normalizeError } from "../../lib/errors";
-import { ExecutionService } from "../../services/execution-service";
-import { mapMcpRequestToExecuteRequest } from "../../mcp/mapper";
-import { createMcpToolRegistry } from "../../mcp/tool-groups";
+import { AppError, normalizeError } from "../../lib/errors";
 import type { AnyMcpToolDefinition, McpExecuteResponse } from "../../mcp/types";
+import { McpService } from "../../services/mcp-service";
 
 interface McpRouteDeps {
-  executionService: ExecutionService;
+  mcpService: McpService;
 }
 
 interface McpErrorContext {
@@ -49,22 +47,6 @@ function buildErrorResponse(context: McpErrorContext, error: AppError): McpExecu
   };
 }
 
-function buildSuccessResponse(
-  tool: AnyMcpToolDefinition,
-  payload: Awaited<ReturnType<ExecutionService["execute"]>>,
-): McpExecuteResponse {
-  return {
-    requestId: payload.requestId,
-    jobId: payload.jobId,
-    status: payload.status,
-    tool: tool.name,
-    internalTool: tool.internalTool,
-    targetHost: payload.targetHost,
-    result: payload.result,
-    error: payload.error,
-  };
-}
-
 function getExecuteStatusCode(response: McpExecuteResponse): number {
   if (response.status === "completed") {
     return 200;
@@ -82,11 +64,9 @@ function getExecuteStatusCode(response: McpExecuteResponse): number {
 }
 
 export async function registerMcpRoutes(app: FastifyInstance, deps: McpRouteDeps): Promise<void> {
-  const mcpToolRegistry = createMcpToolRegistry();
-
   app.post("/mcp/tools/:toolName", async (request, reply) => {
     const params = request.params as { toolName?: string };
-    const tool = mcpToolRegistry.get(params.toolName ?? "");
+    const tool = deps.mcpService.getTool(params.toolName ?? "");
     const context = extractContext(params.toolName, request.body, tool);
 
     try {
@@ -96,17 +76,7 @@ export async function registerMcpRoutes(app: FastifyInstance, deps: McpRouteDeps
         });
       }
 
-      const parsed = tool.schema.safeParse(request.body);
-
-      if (!parsed.success) {
-        throw new AppError(400, "invalid_payload", "Request payload is invalid.", {
-          issues: formatZodIssues(parsed.error),
-        });
-      }
-
-      const executeRequest = mapMcpRequestToExecuteRequest(tool, parsed.data);
-      const executeResponse = await deps.executionService.execute(executeRequest);
-      const response = buildSuccessResponse(tool, executeResponse);
+      const response = await deps.mcpService.executeTool(tool.name, request.body as Record<string, unknown>);
 
       return reply.status(getExecuteStatusCode(response)).send(response);
     } catch (error) {

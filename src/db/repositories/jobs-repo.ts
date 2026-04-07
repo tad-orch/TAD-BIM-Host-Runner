@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-import type { JobRecord, SyncExecutionRecord } from "../../types";
+import type { JobQueryFilters, JobRecord, StoredJobRecord, SyncExecutionRecord } from "../../types";
 
 interface JobRow {
   job_id: string;
@@ -54,6 +54,29 @@ function toAsyncJobRecord(row: JobRow): JobRecord {
     durationMs: row.duration_ms ?? undefined,
     result: parseJson<unknown | null>(row.result_json, null),
     error: parseJson<JobRecord["error"]>(row.error_json, null),
+  };
+}
+
+function toStoredJobRecord(row: JobRow): StoredJobRecord {
+  return {
+    jobId: row.job_id,
+    requestId: row.request_id,
+    remoteJobId: row.remote_job_id,
+    pollPath: row.poll_path,
+    tool: row.tool,
+    internalTool: row.internal_tool,
+    targetHost: row.target_host,
+    mode: row.mode === "sync" ? "sync" : "async",
+    status: row.status,
+    source: row.source,
+    sessionId: row.session_id,
+    args: parseJson<Record<string, unknown>>(row.args_json, {}),
+    result: parseJson<unknown | null>(row.result_json, null),
+    error: parseJson<StoredJobRecord["error"]>(row.error_json, null),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    completedAt: row.completed_at,
+    durationMs: row.duration_ms,
   };
 }
 
@@ -199,6 +222,58 @@ export class JobsRepository {
       .get(requestId) as JobRow | undefined;
 
     return row ? toAsyncJobRecord(row) : null;
+  }
+
+  getStoredJob(jobId: string): StoredJobRecord | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT job_id, request_id, remote_job_id, poll_path, tool, internal_tool, target_host,
+                 mode, status, source, session_id, args_json, result_json, error_json,
+                 created_at, updated_at, completed_at, duration_ms
+          FROM jobs
+          WHERE job_id = ?
+        `,
+      )
+      .get(jobId) as JobRow | undefined;
+
+    return row ? toStoredJobRecord(row) : null;
+  }
+
+  listJobs(filters: JobQueryFilters = {}): StoredJobRecord[] {
+    const clauses: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters.status) {
+      clauses.push("status = ?");
+      params.push(filters.status);
+    }
+
+    if (filters.targetHost) {
+      clauses.push("target_host = ?");
+      params.push(filters.targetHost);
+    }
+
+    if (filters.tool) {
+      clauses.push("tool = ?");
+      params.push(filters.tool);
+    }
+
+    const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+    const rows = this.db
+      .prepare(
+        `
+          SELECT job_id, request_id, remote_job_id, poll_path, tool, internal_tool, target_host,
+                 mode, status, source, session_id, args_json, result_json, error_json,
+                 created_at, updated_at, completed_at, duration_ms
+          FROM jobs
+          ${whereClause}
+          ORDER BY created_at DESC, job_id DESC
+        `,
+      )
+      .all(...params) as JobRow[];
+
+    return rows.map(toStoredJobRecord);
   }
 
   listPendingJobs(): JobRecord[] {

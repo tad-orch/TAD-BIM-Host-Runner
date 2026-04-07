@@ -204,3 +204,161 @@ test("GET /api/conversations and GET /api/conversations/:id/messages return SQLi
     await fs.rm(dataDir, { recursive: true, force: true });
   }
 });
+
+test("GET /api/jobs lists jobs latest-first with filters and GET /api/jobs/:jobId returns stored job data", async () => {
+  const dataDir = await createTempDataDir();
+  const app = await buildApp({
+    envOverrides: {
+      DATA_DIR: dataDir,
+    },
+  });
+
+  const db = new Database(getDbPath(dataDir));
+
+  try {
+    db.prepare(
+      `
+        INSERT INTO jobs (
+          job_id, request_id, remote_job_id, poll_path, tool, internal_tool, target_host,
+          mode, status, source, session_id, args_json, result_json, error_json,
+          created_at, updated_at, completed_at, duration_ms
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+    ).run(
+      "sync:req-old",
+      "req-old",
+      null,
+      null,
+      "revit_ping",
+      "revit_ping",
+      "tad-bim-01",
+      "sync",
+      "completed",
+      "mcp-gateway",
+      "mcp-gateway",
+      "{}",
+      "{\"ok\":true}",
+      null,
+      "2026-04-06T12:00:00.000Z",
+      "2026-04-06T12:00:00.000Z",
+      "2026-04-06T12:00:00.000Z",
+      42,
+    );
+
+    db.prepare(
+      `
+        INSERT INTO jobs (
+          job_id, request_id, remote_job_id, poll_path, tool, internal_tool, target_host,
+          mode, status, source, session_id, args_json, result_json, error_json,
+          created_at, updated_at, completed_at, duration_ms
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+    ).run(
+      "job-newer",
+      "req-newer",
+      "bridge-job-1",
+      "/jobs/bridge-job-1",
+      "revit_create_wall",
+      "revit_create_wall",
+      "tad-bim-02",
+      "async",
+      "accepted",
+      "mcp-gateway",
+      "mcp-gateway",
+      "{\"levelName\":\"Level 1\"}",
+      null,
+      null,
+      "2026-04-06T12:05:00.000Z",
+      "2026-04-06T12:05:00.000Z",
+      null,
+      null,
+    );
+
+    db.prepare(
+      `
+        INSERT INTO jobs (
+          job_id, request_id, remote_job_id, poll_path, tool, internal_tool, target_host,
+          mode, status, source, session_id, args_json, result_json, error_json,
+          created_at, updated_at, completed_at, duration_ms
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+    ).run(
+      "job-filter",
+      "req-filter",
+      "bridge-job-2",
+      "/jobs/bridge-job-2",
+      "revit_create_wall",
+      "revit_create_wall",
+      "tad-bim-01",
+      "async",
+      "completed",
+      "mcp-gateway",
+      "mcp-gateway",
+      "{\"levelName\":\"Level 2\"}",
+      "{\"elementId\":123}",
+      null,
+      "2026-04-06T12:10:00.000Z",
+      "2026-04-06T12:11:00.000Z",
+      "2026-04-06T12:11:00.000Z",
+      60000,
+    );
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/jobs",
+    });
+
+    assert.equal(listResponse.statusCode, 200);
+    assert.deepEqual(
+      listResponse.json().jobs.map((job: { jobId: string }) => job.jobId),
+      ["job-filter", "job-newer", "sync:req-old"],
+    );
+
+    const filteredResponse = await app.inject({
+      method: "GET",
+      url: "/api/jobs?status=completed&targetHost=tad-bim-01&tool=revit_create_wall",
+    });
+
+    assert.equal(filteredResponse.statusCode, 200);
+    assert.equal(filteredResponse.json().jobs.length, 1);
+    assert.equal(filteredResponse.json().jobs[0].jobId, "job-filter");
+
+    const jobResponse = await app.inject({
+      method: "GET",
+      url: "/api/jobs/job-filter",
+    });
+
+    assert.equal(jobResponse.statusCode, 200);
+    assert.deepEqual(jobResponse.json(), {
+      jobId: "job-filter",
+      requestId: "req-filter",
+      remoteJobId: "bridge-job-2",
+      pollPath: "/jobs/bridge-job-2",
+      tool: "revit_create_wall",
+      internalTool: "revit_create_wall",
+      targetHost: "tad-bim-01",
+      mode: "async",
+      status: "completed",
+      source: "mcp-gateway",
+      sessionId: "mcp-gateway",
+      args: {
+        levelName: "Level 2",
+      },
+      createdAt: "2026-04-06T12:10:00.000Z",
+      updatedAt: "2026-04-06T12:11:00.000Z",
+      completedAt: "2026-04-06T12:11:00.000Z",
+      durationMs: 60000,
+      result: {
+        elementId: 123,
+      },
+      error: null,
+    });
+  } finally {
+    db.close();
+    await app.close();
+    await fs.rm(dataDir, { recursive: true, force: true });
+  }
+});

@@ -92,7 +92,7 @@ Index:
 
 ### `conversations`
 
-Foundation table for future chat and operator workflows.
+Conversation container used by `POST /api/chat` and future UI workflows.
 
 Key fields:
 
@@ -105,7 +105,7 @@ Key fields:
 
 ### `messages`
 
-Conversation message history for future chat/API layers.
+Conversation message history persisted by `POST /api/chat` and read through `GET /api/conversations/:id/messages`.
 
 Key fields:
 
@@ -142,3 +142,12 @@ SQLite now owns persistence for:
 - messages
 
 The previous JSON file persistence for `jobs.json` and `audit.log.jsonl` is no longer used by the running application.
+
+## Phase 4 Usage Notes
+
+- `GET /api/jobs` and `GET /api/jobs/:jobId` read directly from the `jobs` table
+- `POST /api/chat` writes to `conversations` and `messages`
+- when `/api/chat` invokes a tool, the assistant message stores:
+  - `tool_name`
+  - `job_id` when a local job exists
+- unsupported chat requests still persist both the user message and the assistant reply

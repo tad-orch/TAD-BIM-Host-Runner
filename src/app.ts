@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 
+import { registerChatRoute } from "./api/routes/chat";
 import { registerConversationsRoutes } from "./api/routes/conversations";
 import { registerExecuteRoute } from "./api/routes/execute";
 import { registerHealthRoute } from "./api/routes/health";
@@ -20,6 +21,7 @@ import { AuditService } from "./services/audit-service";
 import { ChatService } from "./services/chat-service";
 import { ExecutionService } from "./services/execution-service";
 import { JobStore } from "./services/job-store";
+import { McpService } from "./services/mcp-service";
 import { PollingService } from "./services/polling-service";
 
 export interface BuildAppOptions {
@@ -32,6 +34,7 @@ export interface BuildAppOptions {
   jobStore?: JobStore;
   auditService?: AuditService;
   chatService?: ChatService;
+  mcpService?: McpService;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -48,7 +51,6 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   const bridgeClient = options.bridgeClient ?? new BridgeClient();
   const jobStore = options.jobStore ?? new JobStore(jobsRepository);
   const auditService = options.auditService ?? new AuditService(auditRepository);
-  const chatService = options.chatService ?? new ChatService(conversationsRepository, messagesRepository);
 
   await jobStore.init();
   await auditService.init();
@@ -68,6 +70,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     auditService,
     pollingService,
   );
+  const mcpService = options.mcpService ?? new McpService(executionService);
+  const resolvedChatService =
+    options.chatService ?? new ChatService(conversationsRepository, messagesRepository, jobsRepository, mcpService);
 
   const app = Fastify({
     logger: false,
@@ -81,10 +86,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   await registerHealthRoute(app, { hostRegistry, toolRegistry });
   await registerHostsRoute(app, { hostsRepository });
-  await registerConversationsRoutes(app, { chatService });
-  await registerMcpRoutes(app, { executionService });
+  await registerConversationsRoutes(app, { chatService: resolvedChatService });
+  await registerChatRoute(app, { chatService: resolvedChatService });
+  await registerMcpRoutes(app, { mcpService });
   await registerExecuteRoute(app, { executionService });
-  await registerJobsRoute(app, { jobStore, pollingService });
+  await registerJobsRoute(app, { jobStore, pollingService, jobsRepository });
   await pollingService.resumePendingJobs();
 
   return app;
