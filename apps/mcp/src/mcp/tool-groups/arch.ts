@@ -96,7 +96,7 @@ const archRevitSessionStatusTool: McpToolDefinition<McpArchRevitSessionStatusReq
 const archRevitLaunchTool: McpToolDefinition<McpArchRevitLaunchRequest> = {
   name: "mcp-arch-revit-launch",
   internalTool: "revit_launch",
-  mode: "async",
+  mode: "sync",
   namespace: "arch",
   group: "sessions",
   description: "Launches Revit on the target host and optionally waits for readiness.",

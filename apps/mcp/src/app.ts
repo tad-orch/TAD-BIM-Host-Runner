@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 
+import { registerApsRoutes } from "./api/routes/aps";
 import { registerChatRoute } from "./api/routes/chat";
 import { registerConversationsRoutes } from "./api/routes/conversations";
 import { registerExecuteRoute } from "./api/routes/execute";
@@ -15,6 +16,11 @@ import { ConversationsRepository } from "./db/repositories/conversations-repo";
 import { HostsRepository } from "./db/repositories/hosts-repo";
 import { JobsRepository } from "./db/repositories/jobs-repo";
 import { MessagesRepository } from "./db/repositories/messages-repo";
+import { ApsAuthService } from "./integrations/aps/auth";
+import { ApsClient } from "./integrations/aps/client";
+import { ApsCloudModelDiscoveryService } from "./integrations/aps/cloud-model-discovery";
+import { ApsDataManagementService } from "./integrations/aps/data-management";
+import { ApsTokenCache } from "./integrations/aps/token-cache";
 import { createHostRegistry, type HostRegistry } from "./registry/host-registry";
 import { createToolRegistry, type ToolRegistry } from "./registry/tool-registry";
 import { AuditService } from "./services/audit-service";
@@ -35,6 +41,7 @@ export interface BuildAppOptions {
   auditService?: AuditService;
   chatService?: ChatService;
   mcpService?: McpService;
+  apsDiscoveryService?: ApsCloudModelDiscoveryService;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -49,6 +56,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   const hostRegistry = options.hostRegistry ?? createHostRegistry(env, hostsRepository);
   const toolRegistry = options.toolRegistry ?? createToolRegistry(env);
   const bridgeClient = options.bridgeClient ?? new BridgeClient();
+  const apsAuthService = new ApsAuthService(env, new ApsTokenCache(env));
+  const apsClient = new ApsClient(env, apsAuthService);
+  const apsDataManagementService = new ApsDataManagementService(apsClient, env);
   const jobStore = options.jobStore ?? new JobStore(jobsRepository);
   const auditService = options.auditService ?? new AuditService(auditRepository);
 
@@ -71,6 +81,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     pollingService,
   );
   const mcpService = options.mcpService ?? new McpService(executionService);
+  const apsDiscoveryService =
+    options.apsDiscoveryService ?? new ApsCloudModelDiscoveryService(apsDataManagementService, env);
   const resolvedChatService =
     options.chatService ?? new ChatService(conversationsRepository, messagesRepository, jobsRepository, mcpService);
 
@@ -85,6 +97,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   await registerHealthRoute(app, { hostRegistry, toolRegistry });
+  await registerApsRoutes(app, { apsDiscoveryService });
   await registerHostsRoute(app, { hostsRepository });
   await registerConversationsRoutes(app, { chatService: resolvedChatService });
   await registerChatRoute(app, { chatService: resolvedChatService });

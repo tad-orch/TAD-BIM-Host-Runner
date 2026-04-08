@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import {
-  revitCloudRegionSchema,
+  revitCloudOpenConflictPolicySchema,
   revitExportScopeSchema,
+  revitGuidSchema,
   revitPreferredVersionSchema,
+  revitWorksetOpenModeSchema,
 } from "../schemas/tools/revit";
 import type {
   McpArchRevitExportNwcRequest,
@@ -87,16 +89,51 @@ export const mcpArchRevitLaunchRequestSchema = mcpBaseRequestSchema
   })
   .strict() satisfies z.ZodType<McpArchRevitLaunchRequest>;
 
-export const mcpArchRevitOpenCloudModelRequestSchema = mcpBaseRequestSchema
+const mcpArchRevitOpenCloudModelInputSchema = mcpBaseRequestSchema
   .extend({
-    projectId: z.string().min(1).max(255),
-    modelGuid: z.string().min(1).max(255),
-    region: revitCloudRegionSchema,
-    openInCurrentSession: z.boolean().default(true),
+    projectGuid: revitGuidSchema.optional(),
+    projectId: revitGuidSchema.optional(),
+    modelGuid: revitGuidSchema,
+    region: z.enum(["US", "EMEA", "EU", "APAC"]),
+    openInUi: z.boolean().optional(),
+    openInCurrentSession: z.boolean().optional(),
     detach: z.boolean().default(false),
     audit: z.boolean().default(false),
+    worksets: z
+      .object({
+        mode: revitWorksetOpenModeSchema.default("default"),
+      })
+      .strict()
+      .optional(),
+    cloudOpenConflictPolicy: revitCloudOpenConflictPolicySchema.optional(),
   })
-  .strict() satisfies z.ZodType<McpArchRevitOpenCloudModelRequest>;
+  .strict()
+  .superRefine((value, ctx) => {
+    if (!value.projectGuid && !value.projectId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["projectGuid"],
+        message: "Provide 'projectGuid'. Temporary compatibility alias 'projectId' is also accepted.",
+      });
+    }
+  });
+
+export const mcpArchRevitOpenCloudModelRequestSchema = mcpArchRevitOpenCloudModelInputSchema.transform(
+  (value) => ({
+    requestId: value.requestId,
+    targetHost: value.targetHost,
+    projectGuid: value.projectGuid ?? value.projectId ?? "",
+    modelGuid: value.modelGuid,
+    region: value.region === "EU" ? "EMEA" : value.region,
+    openInUi: value.openInUi ?? value.openInCurrentSession ?? false,
+    audit: value.audit,
+    worksets: value.worksets ?? {
+      mode: "default",
+    },
+    cloudOpenConflictPolicy:
+      value.cloudOpenConflictPolicy ?? (value.detach ? "detach_from_central" : "use_default"),
+  }),
+) satisfies z.ZodType<McpArchRevitOpenCloudModelRequest>;
 
 export const mcpArchRevitList3dViewsRequestSchema = mcpBaseRequestSchema
   .extend({

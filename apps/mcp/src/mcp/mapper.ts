@@ -66,12 +66,13 @@ export function mapArchRevitOpenCloudModelToInternalArgs(
   input: McpArchRevitOpenCloudModelRequest,
 ): RevitOpenCloudModelArgs {
   return {
-    projectId: input.projectId,
+    projectGuid: input.projectGuid,
     modelGuid: input.modelGuid,
     region: input.region,
-    openInCurrentSession: input.openInCurrentSession,
-    detach: input.detach,
+    openInUi: input.openInUi,
     audit: input.audit,
+    worksets: input.worksets,
+    cloudOpenConflictPolicy: input.cloudOpenConflictPolicy,
   };
 }
 

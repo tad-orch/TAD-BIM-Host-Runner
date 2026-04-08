@@ -477,28 +477,12 @@ test("POST /mcp/tools/mcp-arch-revit-session-status maps to revit_session_status
   }
 });
 
-test("POST /mcp/tools/mcp-arch-revit-launch maps to revit_launch and preserves /jobs polling", async () => {
+test("POST /mcp/tools/mcp-arch-revit-launch maps to revit_launch as a sync tool", async () => {
   const bridge = Fastify({ logger: false });
   let capturedPayload: Record<string, unknown> | null = null;
-  let pollCount = 0;
 
   await bridge.post("/tools/revit_launch", async (request) => {
     capturedPayload = request.body as Record<string, unknown>;
-
-    return {
-      status: "accepted",
-      jobId: "bridge-launch-1",
-    };
-  });
-
-  await bridge.get("/jobs/bridge-launch-1", async () => {
-    pollCount += 1;
-
-    if (pollCount < 2) {
-      return {
-        status: "running",
-      };
-    }
 
     return {
       status: "completed",
@@ -540,13 +524,17 @@ test("POST /mcp/tools/mcp-arch-revit-launch maps to revit_launch and preserves /
       },
     });
 
-    assert.equal(response.statusCode, 202);
+    assert.equal(response.statusCode, 200);
 
     const body = response.json();
     assert.equal(body.tool, "mcp-arch-revit-launch");
     assert.equal(body.internalTool, "revit_launch");
-    assert.equal(body.status, "accepted");
-    assert.equal(typeof body.jobId, "string");
+    assert.equal(body.status, "completed");
+    assert.equal(body.jobId, null);
+    assert.deepEqual(body.result, {
+      ready: true,
+      version: "2025",
+    });
 
     assert.deepEqual(capturedPayload, {
       requestId: body.requestId,
@@ -554,7 +542,7 @@ test("POST /mcp/tools/mcp-arch-revit-launch maps to revit_launch and preserves /
       source: "mcp-gateway",
       targetHost: "tad-bim-01",
       tool: "revit_launch",
-      mode: "async",
+      mode: "sync",
       args: {
         preferredVersion: "2025",
         waitForReadySeconds: 60,
@@ -566,26 +554,6 @@ test("POST /mcp/tools/mcp-arch-revit-launch maps to revit_launch and preserves /
             ? (capturedPayload.meta as Record<string, unknown>).timestamp
             : null,
       },
-    });
-
-    const completedJob = await waitFor(
-      async () => {
-        const jobResponse = await app.inject({
-          method: "GET",
-          url: `/jobs/${body.jobId}`,
-        });
-
-        assert.equal(jobResponse.statusCode, 200);
-        return jobResponse.json();
-      },
-      (payload) => payload.status === "completed",
-      1_500,
-    );
-
-    assert.equal(completedJob.tool, "revit_launch");
-    assert.deepEqual(completedJob.result, {
-      ready: true,
-      version: "2025",
     });
   } finally {
     await app.close();
@@ -634,12 +602,15 @@ test("POST /mcp/tools/mcp-arch-revit-open-cloud-model maps explicit cloud identi
       url: "/mcp/tools/mcp-arch-revit-open-cloud-model",
       payload: {
         targetHost: "tad-bim-01",
-        projectId: "project-001",
-        modelGuid: "model-guid-001",
+        projectGuid: "fd1335eb-733b-480c-9d16-1a22e742ef70",
+        modelGuid: "e5a59497-0d79-4df0-879d-396310288bb0",
         region: "US",
-        openInCurrentSession: true,
-        detach: false,
+        openInUi: false,
         audit: false,
+        worksets: {
+          mode: "default",
+        },
+        cloudOpenConflictPolicy: "use_default",
       },
     });
 
@@ -663,12 +634,101 @@ test("POST /mcp/tools/mcp-arch-revit-open-cloud-model maps explicit cloud identi
       tool: "revit_open_cloud_model",
       mode: "async",
       args: {
-        projectId: "project-001",
-        modelGuid: "model-guid-001",
+        projectGuid: "fd1335eb-733b-480c-9d16-1a22e742ef70",
+        modelGuid: "e5a59497-0d79-4df0-879d-396310288bb0",
         region: "US",
-        openInCurrentSession: true,
-        detach: false,
+        openInUi: false,
         audit: false,
+        worksets: {
+          mode: "default",
+        },
+        cloudOpenConflictPolicy: "use_default",
+      },
+      meta: {
+        user: "mcp-gateway",
+        timestamp:
+          capturedPayload?.meta && typeof capturedPayload.meta === "object"
+            ? (capturedPayload.meta as Record<string, unknown>).timestamp
+            : null,
+      },
+    });
+  } finally {
+    await app.close();
+    await bridge.close();
+    await fs.rm(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("POST /mcp/tools/mcp-arch-revit-open-cloud-model accepts temporary compatibility aliases", async () => {
+  const bridge = Fastify({ logger: false });
+  let capturedPayload: Record<string, unknown> | null = null;
+
+  await bridge.post("/tools/revit_open_cloud_model", async (request) => {
+    capturedPayload = request.body as Record<string, unknown>;
+
+    return {
+      status: "completed",
+      result: {
+        opened: false,
+      },
+    };
+  });
+
+  await bridge.listen({ host: "127.0.0.1", port: 0 });
+
+  const dataDir = await createTempDataDir();
+  const app = await buildApp({
+    envOverrides: {
+      DATA_DIR: dataDir,
+      HOSTS_JSON: JSON.stringify([
+        {
+          id: "tad-bim-01",
+          baseUrl: getBaseUrl(bridge.server.address()),
+          machineType: "revit-bridge",
+          capabilities: ["revit"],
+          enabledTools: [...allEnabledTools],
+        },
+      ]),
+    },
+  });
+
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/mcp/tools/mcp-arch-revit-open-cloud-model",
+      payload: {
+        targetHost: "tad-bim-01",
+        projectId: "fd1335eb-733b-480c-9d16-1a22e742ef70",
+        modelGuid: "e5a59497-0d79-4df0-879d-396310288bb0",
+        region: "EU",
+        openInCurrentSession: true,
+        detach: true,
+        audit: false,
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+
+    const body = response.json();
+    assert.equal(body.tool, "mcp-arch-revit-open-cloud-model");
+    assert.equal(body.internalTool, "revit_open_cloud_model");
+    assert.deepEqual(capturedPayload, {
+      requestId: body.requestId,
+      sessionId: "mcp-gateway",
+      source: "mcp-gateway",
+      targetHost: "tad-bim-01",
+      tool: "revit_open_cloud_model",
+      mode: "async",
+      args: {
+        projectGuid: "fd1335eb-733b-480c-9d16-1a22e742ef70",
+        modelGuid: "e5a59497-0d79-4df0-879d-396310288bb0",
+        region: "EMEA",
+        openInUi: true,
+        audit: false,
+        worksets: {
+          mode: "default",
+        },
+        cloudOpenConflictPolicy: "detach_from_central",
       },
       meta: {
         user: "mcp-gateway",

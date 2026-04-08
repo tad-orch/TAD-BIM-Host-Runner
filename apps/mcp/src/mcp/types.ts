@@ -44,12 +44,20 @@ export interface McpArchRevitLaunchRequest extends McpBaseRequest {
 }
 
 export interface McpArchRevitOpenCloudModelRequest extends McpBaseRequest {
-  projectId: string;
+  projectGuid: string;
   modelGuid: string;
   region: "US" | "EMEA" | "APAC";
-  openInCurrentSession: boolean;
-  detach: boolean;
+  openInUi: boolean;
   audit: boolean;
+  worksets: {
+    mode: "default" | "open_all" | "close_all" | "open_last_viewed";
+  };
+  cloudOpenConflictPolicy:
+    | "use_default"
+    | "discard_local_changes_and_open_latest_version"
+    | "keep_local_changes"
+    | "detach_from_central"
+    | "cancel";
 }
 
 export interface McpArchRevitList3dViewsRequest extends McpBaseRequest {

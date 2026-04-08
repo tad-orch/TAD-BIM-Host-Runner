@@ -94,17 +94,12 @@ export function createToolRegistry(env: Env): ToolRegistry {
 
   tools.set("revit_launch", {
     name: "revit_launch",
-    mode: "async",
+    mode: "sync",
     argsSchema: revitLaunchArgsSchema as ZodType<z.infer<typeof revitLaunchArgsSchema>>,
     bridge: {
       submitPath: "/tools/revit_launch",
-      statusPath: "/jobs/:jobId",
     },
     timeoutMs: env.BRIDGE_REQUEST_TIMEOUT_MS,
-    polling: {
-      intervalMs: env.POLL_INTERVAL_MS,
-      timeoutMs: env.POLL_TIMEOUT_MS,
-    },
     summarizeArgs: (args: z.infer<typeof revitLaunchArgsSchema>) => ({
       preferredVersion: args.preferredVersion ?? null,
       waitForReadySeconds: args.waitForReadySeconds,
@@ -125,12 +120,13 @@ export function createToolRegistry(env: Env): ToolRegistry {
       timeoutMs: env.POLL_TIMEOUT_MS,
     },
     summarizeArgs: (args: z.infer<typeof revitOpenCloudModelArgsSchema>) => ({
-      projectId: args.projectId,
+      projectGuid: args.projectGuid,
       modelGuid: args.modelGuid,
       region: args.region,
-      openInCurrentSession: args.openInCurrentSession,
-      detach: args.detach,
+      openInUi: args.openInUi,
       audit: args.audit,
+      worksets: args.worksets,
+      cloudOpenConflictPolicy: args.cloudOpenConflictPolicy,
     }),
   });
 

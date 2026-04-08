@@ -4,6 +4,22 @@ export const revitPingArgsSchema = z.object({}).strict();
 export const revitSessionStatusArgsSchema = z.object({}).strict();
 export const revitPreferredVersionSchema = z.string().regex(/^20\d{2}$/).max(10);
 export const revitCloudRegionSchema = z.enum(["US", "EMEA", "APAC"]);
+export const revitGuidSchema = z
+  .string()
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+export const revitWorksetOpenModeSchema = z.enum([
+  "default",
+  "open_all",
+  "close_all",
+  "open_last_viewed",
+]);
+export const revitCloudOpenConflictPolicySchema = z.enum([
+  "use_default",
+  "discard_local_changes_and_open_latest_version",
+  "keep_local_changes",
+  "detach_from_central",
+  "cancel",
+]);
 export const revitExportScopeSchema = z.enum(["selected_views"]);
 
 export const revitPointSchema = z
@@ -34,12 +50,20 @@ export const revitLaunchArgsSchema = z
 
 export const revitOpenCloudModelArgsSchema = z
   .object({
-    projectId: z.string().min(1).max(255),
-    modelGuid: z.string().min(1).max(255),
+    projectGuid: revitGuidSchema,
+    modelGuid: revitGuidSchema,
     region: revitCloudRegionSchema,
-    openInCurrentSession: z.boolean().default(true),
-    detach: z.boolean().default(false),
+    openInUi: z.boolean().default(false),
     audit: z.boolean().default(false),
+    worksets: z
+      .object({
+        mode: revitWorksetOpenModeSchema.default("default"),
+      })
+      .strict()
+      .default({
+        mode: "default",
+      }),
+    cloudOpenConflictPolicy: revitCloudOpenConflictPolicySchema.default("use_default"),
   })
   .strict();
 

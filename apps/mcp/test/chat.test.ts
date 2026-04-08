@@ -359,28 +359,12 @@ test("POST /api/chat routes Revit session checks deterministically and persists 
   }
 });
 
-test("POST /api/chat routes Revit launch deterministically and exposes the created job", async () => {
+test("POST /api/chat routes Revit launch deterministically through the sync execution path", async () => {
   const bridge = Fastify({ logger: false });
   let capturedPayload: Record<string, unknown> | null = null;
-  let pollCount = 0;
 
   await bridge.post("/tools/revit_launch", async (request) => {
     capturedPayload = request.body as Record<string, unknown>;
-
-    return {
-      status: "accepted",
-      jobId: "bridge-launch-chat-1",
-    };
-  });
-
-  await bridge.get("/jobs/bridge-launch-chat-1", async () => {
-    pollCount += 1;
-
-    if (pollCount < 2) {
-      return {
-        status: "running",
-      };
-    }
 
     return {
       status: "completed",
@@ -424,51 +408,28 @@ test("POST /api/chat routes Revit launch deterministically and exposes the creat
 
     const payload = response.json();
     assert.equal(payload.tool, "mcp-arch-revit-launch");
-    assert.equal(payload.job.status, "accepted");
-    assert.equal(payload.job.remoteJobId, "bridge-launch-chat-1");
+    assert.equal(payload.job, null);
     assert.equal(payload.messages.length, 2);
     assert.equal(payload.messages[1].toolName, "mcp-arch-revit-launch");
-    assert.equal(payload.messages[1].jobId, payload.job.jobId);
-    assert.match(payload.messages[1].content, /launch was submitted/i);
+    assert.equal(payload.messages[1].jobId, null);
+    assert.match(payload.messages[1].content, /launch completed/i);
 
-    assert.deepEqual(capturedPayload, {
-      requestId: payload.job.requestId,
-      sessionId: "mcp-gateway",
-      source: "mcp-gateway",
-      targetHost: "tad-bim-01",
-      tool: "revit_launch",
-      mode: "async",
-      args: {
-        preferredVersion: "2025",
-        waitForReadySeconds: 60,
-      },
-      meta: {
-        user: "mcp-gateway",
-        timestamp:
-          capturedPayload?.meta && typeof capturedPayload.meta === "object"
-            ? (capturedPayload.meta as Record<string, unknown>).timestamp
-            : null,
-      },
+    assert.equal(typeof capturedPayload?.requestId, "string");
+    assert.equal(capturedPayload?.sessionId, "mcp-gateway");
+    assert.equal(capturedPayload?.source, "mcp-gateway");
+    assert.equal(capturedPayload?.targetHost, "tad-bim-01");
+    assert.equal(capturedPayload?.tool, "revit_launch");
+    assert.equal(capturedPayload?.mode, "sync");
+    assert.deepEqual(capturedPayload?.args, {
+      preferredVersion: "2025",
+      waitForReadySeconds: 60,
     });
-
-    const completedJob = await waitFor(
-      async () => {
-        const statusResponse = await app.inject({
-          method: "GET",
-          url: `/jobs/${payload.job.jobId}`,
-        });
-
-        assert.equal(statusResponse.statusCode, 200);
-        return statusResponse.json();
-      },
-      (job) => job.status === "completed",
-      1_500,
+    assert.equal(
+      typeof (capturedPayload?.meta && typeof capturedPayload.meta === "object"
+        ? (capturedPayload.meta as Record<string, unknown>).timestamp
+        : null),
+      "string",
     );
-
-    assert.deepEqual(completedJob.result, {
-      ready: true,
-      version: "2025",
-    });
   } finally {
     await app.close();
     await bridge.close();
