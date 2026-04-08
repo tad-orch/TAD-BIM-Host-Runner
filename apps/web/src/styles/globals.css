@@ -1,0 +1,52 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 32 33% 97%;
+    --foreground: 210 27% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 27% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 27% 13%;
+    --primary: 199 87% 27%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 35 74% 94%;
+    --secondary-foreground: 210 27% 13%;
+    --muted: 30 24% 93%;
+    --muted-foreground: 214 12% 38%;
+    --accent: 154 45% 90%;
+    --accent-foreground: 160 84% 18%;
+    --destructive: 0 72% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 18% 85%;
+    --input: 30 18% 85%;
+    --ring: 199 87% 27%;
+    --radius: 1rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply min-h-screen bg-background font-sans text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(14, 165, 233, 0.12), transparent 24rem),
+      radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 20rem),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(250, 247, 242, 0.95));
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer components {
+  .surface {
+    @apply border border-border/80 bg-card/90 shadow-panel backdrop-blur-sm;
+  }
+}

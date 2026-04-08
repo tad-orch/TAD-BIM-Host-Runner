@@ -1,13 +1,6 @@
 # TAD BIM Platform
 
-This repository is now a small npm-workspaces monorepo shell. The current backend/API/MCP gateway lives in `apps/mcp`.
-
-Planned next applications:
-
-- `apps/web`
-- `apps/telegram`
-
-Only `apps/mcp` exists in this phase.
+This repository is an npm-workspaces monorepo. The backend/API/MCP gateway lives in `apps/mcp`, and the Phase 5 frontend now lives in `apps/web`.
 
 ## Current Workspace
 
@@ -16,6 +9,11 @@ Only `apps/mcp` exists in this phase.
   - preserves the current bridge execution flow
   - preserves MCP, API, health, execute, and legacy job routes
   - uses SQLite for hosts, jobs, audit logs, conversations, and messages
+- `apps/web`
+  - React + Vite + TypeScript frontend
+  - Tailwind CSS with lightweight shadcn-style UI primitives
+  - routes for chat, jobs, hosts, and schedules
+  - talks to the existing backend without changing bridge logic or backend flow
 
 Implemented backend routes remain unchanged:
 
@@ -39,16 +37,34 @@ Install dependencies:
 npm install
 ```
 
-Start the backend in development:
+Start only the backend in development:
 
 ```bash
 npm run dev:mcp
 ```
 
-Build the backend:
+Start only the frontend in development:
+
+```bash
+npm run dev:web
+```
+
+Start backend and frontend together:
+
+```bash
+npm run dev
+```
+
+Build only the backend:
 
 ```bash
 npm run build:mcp
+```
+
+Build only the frontend:
+
+```bash
+npm run build:web
 ```
 
 Run backend tests:
@@ -63,12 +79,44 @@ Run backend typecheck:
 npm run typecheck:mcp
 ```
 
-Optional convenience aliases currently delegate to `apps/mcp`:
+Run frontend typecheck:
 
-- `npm run dev`
-- `npm run build`
+```bash
+npm run typecheck:web
+```
+
+Convenience aliases from the root:
+
+- `npm run dev` runs `apps/mcp` and `apps/web` together
+- `npm run build` builds `apps/mcp` and `apps/web`
 - `npm run test`
-- `npm run typecheck`
+- `npm run typecheck` typechecks `apps/mcp` and `apps/web`
+
+## Frontend Pages
+
+The web app lives at `apps/web` and currently includes:
+
+- `/chat`
+  - target host selector
+  - recent conversation list
+  - conversation message history
+  - send box and quick actions
+  - uses `GET /api/hosts`, `GET /api/conversations`, `GET /api/conversations/:id/messages`, and `POST /api/chat`
+- `/jobs`
+  - latest-first job list
+  - filters for status, target host, and tool
+  - detail panel from `GET /api/jobs/:jobId`
+- `/hosts`
+  - registered hosts, machine type, enabled tools, and active status
+- `/schedules`
+  - lightweight scaffold page for the next scheduler phase
+
+## Frontend Dev Notes
+
+- default frontend dev server: `http://127.0.0.1:5173`
+- default backend target in local frontend proxy: `http://127.0.0.1:8080`
+- the frontend assumes the backend runs separately and calls the existing API without backend changes
+- if you need a non-default backend origin for the frontend, set `BACKEND_URL` for Vite proxying in dev or `VITE_API_BASE_URL` when building
 
 ## Backend Notes
 
@@ -88,8 +136,7 @@ Optional convenience aliases currently delegate to `apps/mcp`:
 
 Not implemented yet:
 
-- `apps/web`
 - `apps/telegram`
-- scheduler
+- scheduler APIs and scheduler execution flow
 - Telegram integration
 - LLM-assisted chat interpretation on the execution path

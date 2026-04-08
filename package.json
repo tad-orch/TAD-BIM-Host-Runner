@@ -3,19 +3,26 @@
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "apps/mcp"
+    "apps/mcp",
+    "apps/web"
   ],
   "scripts": {
     "dev:mcp": "npm --workspace apps/mcp run dev",
+    "dev:web": "npm --workspace apps/web run dev",
     "build:mcp": "npm --workspace apps/mcp run build",
+    "build:web": "npm --workspace apps/web run build",
     "test:mcp": "npm --workspace apps/mcp run test",
     "typecheck:mcp": "npm --workspace apps/mcp run typecheck",
-    "dev": "npm run dev:mcp",
-    "build": "npm run build:mcp",
+    "typecheck:web": "npm --workspace apps/web run typecheck",
+    "dev": "concurrently -n mcp,web -c blue,green \"npm run dev:mcp\" \"npm run dev:web\"",
+    "build": "npm run build:mcp && npm run build:web",
     "test": "npm run test:mcp",
-    "typecheck": "npm run typecheck:mcp"
+    "typecheck": "npm run typecheck:mcp && npm run typecheck:web"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
