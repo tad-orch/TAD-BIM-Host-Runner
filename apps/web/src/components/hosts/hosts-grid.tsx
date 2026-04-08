@@ -19,10 +19,10 @@ export function HostsGrid({ hosts }: HostsGridProps) {
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
       {hosts.map((host) => (
         <Card key={host.id}>
-          <CardHeader>
+          <CardHeader className="pb-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <CardTitle>{host.id}</CardTitle>
@@ -35,11 +35,14 @@ export function HostsGrid({ hosts }: HostsGridProps) {
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Base URL</p>
-                <p className="mt-1 break-all font-mono text-xs">{host.baseUrl}</p>
+                <p className="mt-1 break-all rounded-xl bg-background/70 px-3 py-2 font-mono text-xs">{host.baseUrl}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Updated</p>
                 <p className="mt-1 text-sm">{formatDateTime(host.updatedAt)}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {host.capabilities.length} capabilities, {host.enabledTools.length} enabled tools
+                </p>
               </div>
             </div>
 

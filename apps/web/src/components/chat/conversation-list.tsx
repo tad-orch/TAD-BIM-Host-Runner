@@ -20,7 +20,7 @@ export function ConversationList({
   isLoading = false,
 }: ConversationListProps) {
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold">Conversations</p>
@@ -31,7 +31,7 @@ export function ConversationList({
         </Button>
       </div>
 
-      <ScrollArea className="max-h-[28rem] pr-2">
+      <ScrollArea className="min-h-0 flex-1 pr-1">
         <div className="space-y-2">
           {isLoading ? (
             <div className="rounded-xl border border-dashed border-border bg-background/70 px-4 py-6 text-sm text-muted-foreground">
@@ -59,10 +59,14 @@ export function ConversationList({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-medium">{compactText(conversation.title, "Untitled conversation")}</p>
+                      <p className="line-clamp-2 font-medium">{compactText(conversation.title, "Untitled conversation")}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(conversation.updatedAt)}</p>
                     </div>
-                    {conversation.targetHost ? <Badge variant="secondary">{conversation.targetHost}</Badge> : null}
+                    {conversation.targetHost ? (
+                      <Badge variant="secondary" className="max-w-full break-all">
+                        {conversation.targetHost}
+                      </Badge>
+                    ) : null}
                   </div>
                 </button>
               );

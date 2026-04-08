@@ -5,6 +5,11 @@ apps/*/dist
 coverage
 apps/*/coverage
 .DS_Store
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
 data/*.json
 data/*.jsonl
 data/*.db
@@ -17,4 +22,3 @@ apps/*/data/*.db-shm
 apps/*/data/*.db-wal
 !data/.gitkeep
 !apps/*/data/.gitkeep
-.env

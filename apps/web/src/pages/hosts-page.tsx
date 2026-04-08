@@ -9,12 +9,26 @@ export function HostsPage() {
     queryKey: ["hosts"],
     queryFn: getHosts,
   });
+  const hosts = hostsQuery.data ?? [];
+  const activeHostsCount = hosts.filter((host) => host.isActive).length;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Hosts"
         description="Registered execution hosts from the backend database, including machine type and enabled tools."
+        actions={
+          hosts.length > 0 ? (
+            <>
+              <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
+                {hosts.length} total
+              </span>
+              <span className="rounded-full bg-emerald-500/12 px-3 py-1 text-xs font-semibold text-emerald-700">
+                {activeHostsCount} active
+              </span>
+            </>
+          ) : undefined
+        }
       />
 
       {hostsQuery.isLoading ? (
@@ -22,7 +36,7 @@ export function HostsPage() {
           Loading hosts...
         </div>
       ) : (
-        <HostsGrid hosts={hostsQuery.data ?? []} />
+        <HostsGrid hosts={hosts} />
       )}
     </div>
   );

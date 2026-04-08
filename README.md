@@ -99,13 +99,13 @@ The web app lives at `apps/web` and currently includes:
 - `/chat`
   - target host selector
   - recent conversation list
-  - conversation message history
-  - send box and quick actions
+  - dedicated scrollable conversation history
+  - anchored compose area with quick actions
   - uses `GET /api/hosts`, `GET /api/conversations`, `GET /api/conversations/:id/messages`, and `POST /api/chat`
 - `/jobs`
   - latest-first job list
   - filters for status, target host, and tool
-  - detail panel from `GET /api/jobs/:jobId`
+  - split table/detail panel from `GET /api/jobs/:jobId`
 - `/hosts`
   - registered hosts, machine type, enabled tools, and active status
 - `/schedules`
@@ -116,12 +116,35 @@ The web app lives at `apps/web` and currently includes:
 - default frontend dev server: `http://127.0.0.1:5173`
 - default backend target in local frontend proxy: `http://127.0.0.1:8080`
 - the frontend assumes the backend runs separately and calls the existing API without backend changes
-- if you need a non-default backend origin for the frontend, set `BACKEND_URL` for Vite proxying in dev or `VITE_API_BASE_URL` when building
+- recommended frontend env example: `apps/web/.env.example`
+- if you need a non-default backend origin for the frontend, set `VITE_DEV_BACKEND_URL` for local Vite proxying or `VITE_API_BASE_URL` when building
+
+## Environment Setup
+
+Backend example env:
+
+```bash
+cp apps/mcp/.env.example apps/mcp/.env
+```
+
+Frontend example env:
+
+```bash
+cp apps/web/.env.example apps/web/.env
+```
+
+Notes:
+
+- real `.env` files are ignored and should not be committed
+- replace the placeholder bridge URL and bearer token in `apps/mcp/.env`
+- `apps/web/.env` is optional for local development when the backend runs at `http://127.0.0.1:8080`
+- if a real bridge token was ever committed in a previous `apps/mcp/.env`, rotate it manually
 
 ## Backend Notes
 
 - backend package path: `apps/mcp`
 - backend env file path: `apps/mcp/.env`
+- backend example env file path: `apps/mcp/.env.example`
 - default backend data directory: `apps/mcp/data`
 - default SQLite path: `apps/mcp/data/app.db`
 

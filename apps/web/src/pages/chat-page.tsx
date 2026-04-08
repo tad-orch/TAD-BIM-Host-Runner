@@ -136,13 +136,13 @@ export function ChatPage() {
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <Card className="h-full">
+      <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
+        <Card className="flex min-h-[clamp(38rem,calc(100vh-14rem),56rem)] flex-col">
           <CardHeader>
             <CardTitle>Recent conversations</CardTitle>
             <CardDescription>Persisted threads from the SQLite-backed backend.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 min-h-0 flex-col">
             <ConversationList
               conversations={conversations}
               selectedConversationId={selectedConversationId}
@@ -153,7 +153,7 @@ export function ChatPage() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Current context</CardTitle>
@@ -226,90 +226,98 @@ export function ChatPage() {
             </div>
           ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Conversation</CardTitle>
-              <CardDescription>
-                Assistant messages expose tool and job identifiers when the backend includes them.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <MessageThread
-                messages={messages}
-                selectedHost={selectedHost}
-                isLoading={messagesQuery.isLoading}
-                pending={sendMutation.isPending}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Compose</CardTitle>
-              <CardDescription>Select a host, send natural language, or trigger a quick action.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
+          <Card className="flex min-h-[clamp(38rem,calc(100vh-14rem),56rem)] flex-col">
+            <CardHeader className="border-b border-border/70 pb-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <label className="mb-2 block text-sm font-medium" htmlFor="target-host">
-                    Target host
-                  </label>
-                  <Select
-                    id="target-host"
-                    value={selectedHost}
-                    onChange={(event) => setSelectedHost(event.target.value)}
-                    disabled={hostsQuery.isLoading || hosts.length === 0}
-                  >
-                    {hosts.map((host) => (
-                      <option key={host.id} value={host.id}>
-                        {host.id}
-                      </option>
-                    ))}
-                  </Select>
+                  <CardTitle>Conversation</CardTitle>
+                  <CardDescription>
+                    Message history stays scrollable while the composer remains anchored at the bottom.
+                  </CardDescription>
                 </div>
-
-                <div className="flex flex-wrap gap-2 self-end">
-                  <Button variant="secondary" onClick={() => submitMessage(HEALTH_PROMPT)} disabled={composerDisabled}>
-                    Check Revit health
-                  </Button>
-                  <Button variant="outline" onClick={() => submitMessage(DEMO_WALL_PROMPT)} disabled={composerDisabled}>
-                    Create demo wall
-                  </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary">Host: {selectedHost || "None"}</Badge>
+                  <Badge variant="outline">{activeConversation ? "Existing thread" : "New thread"}</Badge>
                 </div>
               </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium" htmlFor="chat-input">
-                  Message
-                </label>
-                <Textarea
-                  id="chat-input"
-                  placeholder="Ask the assistant to inspect host health or create a wall with a numeric length."
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  disabled={composerDisabled}
-                  onKeyDown={(event) => {
-                    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                      event.preventDefault();
-                      submitMessage(draft);
-                    }
-                  }}
+            </CardHeader>
+            <CardContent className="grid flex-1 min-h-0 grid-rows-[minmax(0,1fr)_auto] p-0">
+              <div className="min-h-0 px-4 pb-4 pt-5 md:px-6">
+                <MessageThread
+                  messages={messages}
+                  selectedHost={selectedHost}
+                  isLoading={messagesQuery.isLoading}
+                  pending={sendMutation.isPending}
                 />
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {hosts.length === 0 ? "A registered host is required before chat can send requests." : "Use Ctrl/Cmd + Enter to send."}
-                </p>
               </div>
 
-              {sendMutation.error ? (
-                <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-                  {sendMutation.error.message}
-                </div>
-              ) : null}
+              <div className="border-t border-border/70 bg-background/65 px-4 py-4 md:px-6 md:py-5">
+                <div className="rounded-2xl border border-border/80 bg-background/80 p-4">
+                  <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)]">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium" htmlFor="target-host">
+                        Target host
+                      </label>
+                      <Select
+                        id="target-host"
+                        value={selectedHost}
+                        onChange={(event) => setSelectedHost(event.target.value)}
+                        disabled={hostsQuery.isLoading || hosts.length === 0}
+                      >
+                        {hosts.map((host) => (
+                          <option key={host.id} value={host.id}>
+                            {host.id}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
 
-              <div className="flex justify-end">
-                <Button onClick={() => submitMessage(draft)} disabled={composerDisabled || !draft.trim()}>
-                  Send message
-                </Button>
+                    <div className="flex flex-wrap gap-2 self-end lg:justify-end">
+                      <Button variant="secondary" onClick={() => submitMessage(HEALTH_PROMPT)} disabled={composerDisabled}>
+                        Check Revit health
+                      </Button>
+                      <Button variant="outline" onClick={() => submitMessage(DEMO_WALL_PROMPT)} disabled={composerDisabled}>
+                        Create demo wall
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="mb-2 block text-sm font-medium" htmlFor="chat-input">
+                      Message
+                    </label>
+                    <Textarea
+                      id="chat-input"
+                      placeholder="Ask the assistant to inspect host health or create a wall with a numeric length."
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      disabled={composerDisabled}
+                      onKeyDown={(event) => {
+                        if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                          event.preventDefault();
+                          submitMessage(draft);
+                        }
+                      }}
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {hosts.length === 0
+                        ? "A registered host is required before chat can send requests."
+                        : "Use Ctrl/Cmd + Enter to send."}
+                    </p>
+                  </div>
+
+                  {sendMutation.error ? (
+                    <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                      {sendMutation.error.message}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 flex justify-end">
+                    <Button onClick={() => submitMessage(draft)} disabled={composerDisabled || !draft.trim()}>
+                      Send message
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

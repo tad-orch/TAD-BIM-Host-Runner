@@ -33,8 +33,8 @@ interface JobsTableProps {
 
 export function JobsTable({ jobs, selectedJobId, onSelect }: JobsTableProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/80">
-      <div className="overflow-auto">
+    <div className="h-full overflow-hidden rounded-2xl border border-border/80">
+      <div className="h-full overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -69,12 +69,12 @@ export function JobsTable({ jobs, selectedJobId, onSelect }: JobsTableProps) {
                     }
                   }}
                 >
-                  <TableCell className="font-mono text-xs">{job.jobId}</TableCell>
-                  <TableCell>{job.tool}</TableCell>
+                  <TableCell className="break-all font-mono text-[11px]">{job.jobId}</TableCell>
+                  <TableCell className="whitespace-nowrap">{job.tool}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(job.status)}>{job.status}</Badge>
                   </TableCell>
-                  <TableCell>{job.targetHost}</TableCell>
+                  <TableCell className="whitespace-nowrap">{job.targetHost}</TableCell>
                   <TableCell>{formatDateTime(job.createdAt)}</TableCell>
                 </TableRow>
               ))

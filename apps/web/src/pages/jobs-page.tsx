@@ -72,6 +72,7 @@ export function JobsPage() {
   }, [jobsQuery.data, selectedJobId]);
 
   const selectedJob = selectedJobQuery.data ?? null;
+  const jobs = jobsQuery.data ?? [];
   const activeFilterCount = useMemo(
     () => [statusFilter, hostFilter, toolFilter].filter((value) => value !== ALL_FILTER).length,
     [hostFilter, statusFilter, toolFilter],
@@ -82,7 +83,12 @@ export function JobsPage() {
       <PageHeader
         title="Jobs"
         description="Inspect stored jobs through the existing /api/jobs endpoints with lightweight filters."
-        actions={activeFilterCount > 0 ? <Badge variant="secondary">{activeFilterCount} active filters</Badge> : undefined}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline">{jobs.length} jobs</Badge>
+            {activeFilterCount > 0 ? <Badge variant="secondary">{activeFilterCount} active filters</Badge> : null}
+          </div>
+        }
       />
 
       <Card>
@@ -133,29 +139,29 @@ export function JobsPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
-        <Card>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(360px,0.95fr)] 2xl:grid-cols-[minmax(0,1.65fr)_420px]">
+        <Card className="flex min-h-[clamp(32rem,calc(100vh-18rem),48rem)] flex-col">
           <CardHeader>
             <CardTitle>Latest jobs</CardTitle>
             <CardDescription>Ordered latest-first by the backend.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <JobsTable jobs={jobsQuery.data ?? []} selectedJobId={selectedJobId} onSelect={(job) => setSelectedJobId(job.jobId)} />
+          <CardContent className="flex flex-1 min-h-0">
+            <JobsTable jobs={jobs} selectedJobId={selectedJobId} onSelect={(job) => setSelectedJobId(job.jobId)} />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="flex min-h-[clamp(32rem,calc(100vh-18rem),48rem)] flex-col">
           <CardHeader>
             <CardTitle>Job details</CardTitle>
             <CardDescription>Full stored payload from GET /api/jobs/:jobId.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1">
             {!selectedJob ? (
-              <div className="rounded-xl border border-dashed border-border bg-background/70 px-4 py-6 text-sm text-muted-foreground">
+              <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-background/70 px-4 py-6 text-center text-sm text-muted-foreground">
                 Select a job to inspect its result or error payload.
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="flex flex-1 flex-col space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <Detail label="Job ID" value={selectedJob.jobId} mono />
                   <Detail label="Tool" value={selectedJob.tool} />
@@ -171,14 +177,14 @@ export function JobsPage() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Result</p>
-                    <pre className="mt-2 overflow-auto rounded-xl bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100">
+                    <pre className="mt-2 max-h-56 overflow-auto rounded-xl bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100">
                       {formatJson(selectedJob.result)}
                     </pre>
                   </div>
 
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Error</p>
-                    <pre className="mt-2 overflow-auto rounded-xl bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100">
+                    <pre className="mt-2 max-h-56 overflow-auto rounded-xl bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100">
                       {formatJson(selectedJob.error)}
                     </pre>
                   </div>
