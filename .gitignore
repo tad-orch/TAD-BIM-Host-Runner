@@ -17,3 +17,4 @@ apps/*/data/*.db-shm
 apps/*/data/*.db-wal
 !data/.gitkeep
 !apps/*/data/.gitkeep
+.env
