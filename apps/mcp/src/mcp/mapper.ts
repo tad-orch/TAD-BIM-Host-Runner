@@ -1,6 +1,19 @@
 import { createRequestId } from "../lib/ids";
-import type { RevitCreateWallArgs, RevitPingArgs } from "../schemas/tools/revit";
 import type {
+  RevitCreateWallArgs,
+  RevitExportNwcArgs,
+  RevitLaunchArgs,
+  RevitList3dViewsArgs,
+  RevitOpenCloudModelArgs,
+  RevitPingArgs,
+  RevitSessionStatusArgs,
+} from "../schemas/tools/revit";
+import type {
+  McpArchRevitExportNwcRequest,
+  McpArchRevitLaunchRequest,
+  McpArchRevitList3dViewsRequest,
+  McpArchRevitOpenCloudModelRequest,
+  McpArchRevitSessionStatusRequest,
   McpArchSystemHealthRequest,
   McpArchWallsCreateRequest,
   McpBaseRequest,
@@ -18,6 +31,12 @@ export function mapArchSystemHealthToInternalArgs(
   return {};
 }
 
+export function mapArchRevitSessionStatusToInternalArgs(
+  _input: McpArchRevitSessionStatusRequest,
+): RevitSessionStatusArgs {
+  return {};
+}
+
 export function mapArchWallsCreateToInternalArgs(
   input: McpArchWallsCreateRequest,
 ): RevitCreateWallArgs {
@@ -31,6 +50,46 @@ export function mapArchWallsCreateToInternalArgs(
     start,
     end,
     unconnectedHeight: input.height,
+  };
+}
+
+export function mapArchRevitLaunchToInternalArgs(
+  input: McpArchRevitLaunchRequest,
+): RevitLaunchArgs {
+  return {
+    preferredVersion: input.preferredVersion,
+    waitForReadySeconds: input.waitForReadySeconds,
+  };
+}
+
+export function mapArchRevitOpenCloudModelToInternalArgs(
+  input: McpArchRevitOpenCloudModelRequest,
+): RevitOpenCloudModelArgs {
+  return {
+    projectId: input.projectId,
+    modelGuid: input.modelGuid,
+    region: input.region,
+    openInCurrentSession: input.openInCurrentSession,
+    detach: input.detach,
+    audit: input.audit,
+  };
+}
+
+export function mapArchRevitList3dViewsToInternalArgs(
+  input: McpArchRevitList3dViewsRequest,
+): RevitList3dViewsArgs {
+  return {
+    onlyExportable: input.onlyExportable,
+  };
+}
+
+export function mapArchRevitExportNwcToInternalArgs(
+  input: McpArchRevitExportNwcRequest,
+): RevitExportNwcArgs {
+  return {
+    viewNames: input.viewNames,
+    outputPath: input.outputPath,
+    exportScope: input.exportScope,
   };
 }
 

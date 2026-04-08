@@ -5,7 +5,14 @@ import type { ErrorSummary, JobStatus, ToolName } from "../types";
 
 export type McpNamespace = "arch" | "str" | "mep";
 
-export type McpToolName = "mcp-arch-system-health" | "mcp-arch-walls-create";
+export type McpToolName =
+  | "mcp-arch-system-health"
+  | "mcp-arch-walls-create"
+  | "mcp-arch-revit-session-status"
+  | "mcp-arch-revit-launch"
+  | "mcp-arch-revit-open-cloud-model"
+  | "mcp-arch-revit-list-3d-views"
+  | "mcp-arch-revit-export-nwc";
 
 export interface McpBaseRequest {
   requestId?: string;
@@ -27,6 +34,32 @@ export interface McpArchWallsCreateRequest extends McpBaseRequest {
   wallType: string;
   level: string;
   height: number;
+}
+
+export interface McpArchRevitSessionStatusRequest extends McpBaseRequest {}
+
+export interface McpArchRevitLaunchRequest extends McpBaseRequest {
+  preferredVersion?: string;
+  waitForReadySeconds: number;
+}
+
+export interface McpArchRevitOpenCloudModelRequest extends McpBaseRequest {
+  projectId: string;
+  modelGuid: string;
+  region: "US" | "EMEA" | "APAC";
+  openInCurrentSession: boolean;
+  detach: boolean;
+  audit: boolean;
+}
+
+export interface McpArchRevitList3dViewsRequest extends McpBaseRequest {
+  onlyExportable: boolean;
+}
+
+export interface McpArchRevitExportNwcRequest extends McpBaseRequest {
+  viewNames: string[];
+  outputPath: string;
+  exportScope: "selected_views";
 }
 
 export interface McpToolGroupDefinition {

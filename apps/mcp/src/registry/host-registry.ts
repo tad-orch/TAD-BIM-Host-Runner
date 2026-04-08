@@ -10,14 +10,30 @@ const defaultHosts = (_env: Env): HostDefinition[] => [
     baseUrl: "http://127.0.0.1:3001",
     machineType: "revit-bridge",
     capabilities: ["revit"],
-    enabledTools: ["revit_ping", "revit_create_wall"],
+    enabledTools: [
+      "revit_ping",
+      "revit_create_wall",
+      "revit_session_status",
+      "revit_launch",
+      "revit_open_cloud_model",
+      "revit_list_3d_views",
+      "revit_export_nwc",
+    ],
   },
   {
     id: "tad-bim-01",
     baseUrl: "http://127.0.0.1:3002",
     machineType: "revit-bridge",
     capabilities: ["revit"],
-    enabledTools: ["revit_ping", "revit_create_wall"],
+    enabledTools: [
+      "revit_ping",
+      "revit_create_wall",
+      "revit_session_status",
+      "revit_launch",
+      "revit_open_cloud_model",
+      "revit_list_3d_views",
+      "revit_export_nwc",
+    ],
   },
 ];
 

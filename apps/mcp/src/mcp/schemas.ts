@@ -1,6 +1,20 @@
 import { z } from "zod";
 
-import type { McpArchSystemHealthRequest, McpArchWallsCreateRequest, McpPoint } from "./types";
+import {
+  revitCloudRegionSchema,
+  revitExportScopeSchema,
+  revitPreferredVersionSchema,
+} from "../schemas/tools/revit";
+import type {
+  McpArchRevitExportNwcRequest,
+  McpArchRevitLaunchRequest,
+  McpArchRevitList3dViewsRequest,
+  McpArchRevitOpenCloudModelRequest,
+  McpArchRevitSessionStatusRequest,
+  McpArchSystemHealthRequest,
+  McpArchWallsCreateRequest,
+  McpPoint,
+} from "./types";
 
 const requestIdSchema = z.string().min(1).max(255).optional();
 const targetHostSchema = z.string().min(1).max(255);
@@ -22,6 +36,9 @@ export const mcpPointSchema = z
 
 export const mcpArchSystemHealthRequestSchema =
   mcpBaseRequestSchema satisfies z.ZodType<McpArchSystemHealthRequest>;
+
+export const mcpArchRevitSessionStatusRequestSchema =
+  mcpBaseRequestSchema satisfies z.ZodType<McpArchRevitSessionStatusRequest>;
 
 export const mcpArchWallsCreateRequestSchema = mcpBaseRequestSchema
   .extend({
@@ -62,3 +79,35 @@ export const mcpArchWallsCreateRequestSchema = mcpBaseRequestSchema
       });
     }
   }) satisfies z.ZodType<McpArchWallsCreateRequest>;
+
+export const mcpArchRevitLaunchRequestSchema = mcpBaseRequestSchema
+  .extend({
+    preferredVersion: revitPreferredVersionSchema.optional(),
+    waitForReadySeconds: z.number().int().positive().max(600).default(60),
+  })
+  .strict() satisfies z.ZodType<McpArchRevitLaunchRequest>;
+
+export const mcpArchRevitOpenCloudModelRequestSchema = mcpBaseRequestSchema
+  .extend({
+    projectId: z.string().min(1).max(255),
+    modelGuid: z.string().min(1).max(255),
+    region: revitCloudRegionSchema,
+    openInCurrentSession: z.boolean().default(true),
+    detach: z.boolean().default(false),
+    audit: z.boolean().default(false),
+  })
+  .strict() satisfies z.ZodType<McpArchRevitOpenCloudModelRequest>;
+
+export const mcpArchRevitList3dViewsRequestSchema = mcpBaseRequestSchema
+  .extend({
+    onlyExportable: z.boolean().default(true),
+  })
+  .strict() satisfies z.ZodType<McpArchRevitList3dViewsRequest>;
+
+export const mcpArchRevitExportNwcRequestSchema = mcpBaseRequestSchema
+  .extend({
+    viewNames: z.array(z.string().min(1).max(255)).min(1).max(100),
+    outputPath: z.string().min(1).max(1024),
+    exportScope: revitExportScopeSchema.default("selected_views"),
+  })
+  .strict() satisfies z.ZodType<McpArchRevitExportNwcRequest>;

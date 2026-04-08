@@ -1,6 +1,14 @@
 import { z, type ZodType } from "zod";
 
-import { revitCreateWallArgsSchema, revitPingArgsSchema } from "../schemas/tools/revit";
+import {
+  revitCreateWallArgsSchema,
+  revitExportNwcArgsSchema,
+  revitLaunchArgsSchema,
+  revitList3dViewsArgsSchema,
+  revitOpenCloudModelArgsSchema,
+  revitPingArgsSchema,
+  revitSessionStatusArgsSchema,
+} from "../schemas/tools/revit";
 import type { Env } from "../config/env";
 import type { ToolName } from "../types";
 
@@ -70,6 +78,92 @@ export function createToolRegistry(env: Env): ToolRegistry {
       start: args.start,
       end: args.end,
       unconnectedHeight: args.unconnectedHeight,
+    }),
+  });
+
+  tools.set("revit_session_status", {
+    name: "revit_session_status",
+    mode: "sync",
+    argsSchema: revitSessionStatusArgsSchema,
+    bridge: {
+      submitPath: "/tools/revit_session_status",
+    },
+    timeoutMs: env.BRIDGE_REQUEST_TIMEOUT_MS,
+    summarizeArgs: () => ({}),
+  });
+
+  tools.set("revit_launch", {
+    name: "revit_launch",
+    mode: "async",
+    argsSchema: revitLaunchArgsSchema as ZodType<z.infer<typeof revitLaunchArgsSchema>>,
+    bridge: {
+      submitPath: "/tools/revit_launch",
+      statusPath: "/jobs/:jobId",
+    },
+    timeoutMs: env.BRIDGE_REQUEST_TIMEOUT_MS,
+    polling: {
+      intervalMs: env.POLL_INTERVAL_MS,
+      timeoutMs: env.POLL_TIMEOUT_MS,
+    },
+    summarizeArgs: (args: z.infer<typeof revitLaunchArgsSchema>) => ({
+      preferredVersion: args.preferredVersion ?? null,
+      waitForReadySeconds: args.waitForReadySeconds,
+    }),
+  });
+
+  tools.set("revit_open_cloud_model", {
+    name: "revit_open_cloud_model",
+    mode: "async",
+    argsSchema: revitOpenCloudModelArgsSchema as ZodType<z.infer<typeof revitOpenCloudModelArgsSchema>>,
+    bridge: {
+      submitPath: "/tools/revit_open_cloud_model",
+      statusPath: "/jobs/:jobId",
+    },
+    timeoutMs: env.BRIDGE_REQUEST_TIMEOUT_MS,
+    polling: {
+      intervalMs: env.POLL_INTERVAL_MS,
+      timeoutMs: env.POLL_TIMEOUT_MS,
+    },
+    summarizeArgs: (args: z.infer<typeof revitOpenCloudModelArgsSchema>) => ({
+      projectId: args.projectId,
+      modelGuid: args.modelGuid,
+      region: args.region,
+      openInCurrentSession: args.openInCurrentSession,
+      detach: args.detach,
+      audit: args.audit,
+    }),
+  });
+
+  tools.set("revit_list_3d_views", {
+    name: "revit_list_3d_views",
+    mode: "sync",
+    argsSchema: revitList3dViewsArgsSchema,
+    bridge: {
+      submitPath: "/tools/revit_list_3d_views",
+    },
+    timeoutMs: env.BRIDGE_REQUEST_TIMEOUT_MS,
+    summarizeArgs: (args: z.infer<typeof revitList3dViewsArgsSchema>) => ({
+      onlyExportable: args.onlyExportable,
+    }),
+  });
+
+  tools.set("revit_export_nwc", {
+    name: "revit_export_nwc",
+    mode: "async",
+    argsSchema: revitExportNwcArgsSchema as ZodType<z.infer<typeof revitExportNwcArgsSchema>>,
+    bridge: {
+      submitPath: "/tools/revit_export_nwc",
+      statusPath: "/jobs/:jobId",
+    },
+    timeoutMs: env.BRIDGE_REQUEST_TIMEOUT_MS,
+    polling: {
+      intervalMs: env.POLL_INTERVAL_MS,
+      timeoutMs: env.POLL_TIMEOUT_MS,
+    },
+    summarizeArgs: (args: z.infer<typeof revitExportNwcArgsSchema>) => ({
+      viewNames: args.viewNames,
+      outputPath: args.outputPath,
+      exportScope: args.exportScope,
     }),
   });
 

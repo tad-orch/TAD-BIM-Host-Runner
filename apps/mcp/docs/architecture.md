@@ -34,8 +34,18 @@ The bridge-facing contract is unchanged:
 
 - `revit_ping`
 - `revit_create_wall`
+- `revit_session_status`
+- `revit_launch`
+- `revit_open_cloud_model`
+- `revit_list_3d_views`
+- `revit_export_nwc`
 - `POST /tools/revit_ping`
 - `POST /tools/revit_create_wall`
+- `POST /tools/revit_session_status`
+- `POST /tools/revit_launch`
+- `POST /tools/revit_open_cloud_model`
+- `POST /tools/revit_list_3d_views`
+- `POST /tools/revit_export_nwc`
 - `GET /jobs/:jobId`
 
 ## Backend Layout
@@ -68,6 +78,11 @@ Legacy route modules under `src/routes/*` and `src/mcp/routes.ts` now act as com
 - `GET /jobs/:jobId`
 - `POST /mcp/tools/mcp-arch-system-health`
 - `POST /mcp/tools/mcp-arch-walls-create`
+- `POST /mcp/tools/mcp-arch-revit-session-status`
+- `POST /mcp/tools/mcp-arch-revit-launch`
+- `POST /mcp/tools/mcp-arch-revit-open-cloud-model`
+- `POST /mcp/tools/mcp-arch-revit-list-3d-views`
+- `POST /mcp/tools/mcp-arch-revit-export-nwc`
 - `GET /api/hosts`
 - `GET /api/jobs`
 - `GET /api/jobs/:jobId`
@@ -78,7 +93,44 @@ Legacy route modules under `src/routes/*` and `src/mcp/routes.ts` now act as com
 - host seeding into SQLite
 - SQLite-backed jobs and audit logs
 - SQLite-backed conversations and messages
-- deterministic chat routing for health and wall creation
+- deterministic chat routing for health, session-status, launch, and wall creation
+
+## Revit Operational Workflow
+
+The next operational Revit workflow is now wired through the existing MCP and execution pipeline:
+
+1. `mcp-arch-revit-session-status`
+2. `mcp-arch-revit-launch`
+3. `mcp-arch-revit-open-cloud-model`
+4. `mcp-arch-revit-list-3d-views`
+5. `mcp-arch-revit-export-nwc`
+
+These tools intentionally reuse the same path as the current wall and health tools:
+
+- friendly MCP payload validation in `src/mcp/*`
+- internal tool validation in `ToolRegistry`
+- dispatch through `ExecutionService`
+- bridge calls through `BridgeClient`
+- job persistence and polling through `JobStore` and `PollingService`
+- audit logging through `AuditService`
+
+Current chat support stays narrow and deterministic:
+
+- supported in `/api/chat`
+  - Revit health checks
+  - Revit session status checks
+  - Revit launch requests
+  - wall creation with numeric length
+- not yet routed from `/api/chat`
+  - cloud model opening
+  - 3D view listing
+  - NWC export
+
+## Current Limitations
+
+- the new tools depend on matching bridge/add-in support for the new bridge tool names
+- existing seeded hosts in SQLite remain the source of truth, so their `enabled_tools` must include the new internal tools before the backend can dispatch them
+- cloud model opening requires explicit `projectId`, `modelGuid`, and `region`; it is intentionally not inferred from chat text
 
 ## What Is Intentionally Deferred
 

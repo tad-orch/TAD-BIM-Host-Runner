@@ -151,3 +151,16 @@ The previous JSON file persistence for `jobs.json` and `audit.log.jsonl` is no l
   - `tool_name`
   - `job_id` when a local job exists
 - unsupported chat requests still persist both the user message and the assistant reply
+
+## Operational Tooling Notes
+
+The new Revit operational tools use the same tables and flow as the existing ones:
+
+- sync tools such as `revit_session_status` and `revit_list_3d_views` are recorded in `jobs` with `mode = 'sync'`
+- async tools such as `revit_launch`, `revit_open_cloud_model`, and `revit_export_nwc` persist local jobs, remote job ids, poll paths, and final results/errors in `jobs`
+- audit entries continue to record request id, tool, host, outcome, duration, arg summary, and error summary
+
+Host availability caveat:
+
+- if a host already exists in SQLite, its `enabled_tools_json` must be updated to include the new internal tools before those tools can be dispatched
+- `HOSTS_JSON` only seeds hosts when the table is empty

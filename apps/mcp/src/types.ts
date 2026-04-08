@@ -10,7 +10,14 @@ export const jobStatusSchema = z.enum([
 
 export type JobStatus = z.infer<typeof jobStatusSchema>;
 
-export type ToolName = "revit_ping" | "revit_create_wall";
+export type ToolName =
+  | "revit_ping"
+  | "revit_create_wall"
+  | "revit_session_status"
+  | "revit_launch"
+  | "revit_open_cloud_model"
+  | "revit_list_3d_views"
+  | "revit_export_nwc";
 
 export interface HostDefinition {
   id: string;

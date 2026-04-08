@@ -26,7 +26,19 @@ export const hostDefinitionSchema = z
     baseUrl: z.url(),
     machineType: z.string().min(1).max(255),
     capabilities: z.array(z.string().min(1)).default([]),
-    enabledTools: z.array(z.enum(["revit_ping", "revit_create_wall"])).default([]),
+    enabledTools: z
+      .array(
+        z.enum([
+          "revit_ping",
+          "revit_create_wall",
+          "revit_session_status",
+          "revit_launch",
+          "revit_open_cloud_model",
+          "revit_list_3d_views",
+          "revit_export_nwc",
+        ]),
+      )
+      .default([]),
     headers: z.record(z.string(), z.string()).optional(),
   })
   .strict();

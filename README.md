@@ -22,6 +22,11 @@ Implemented backend routes remain unchanged:
 - `GET /jobs/:jobId`
 - `POST /mcp/tools/mcp-arch-system-health`
 - `POST /mcp/tools/mcp-arch-walls-create`
+- `POST /mcp/tools/mcp-arch-revit-session-status`
+- `POST /mcp/tools/mcp-arch-revit-launch`
+- `POST /mcp/tools/mcp-arch-revit-open-cloud-model`
+- `POST /mcp/tools/mcp-arch-revit-list-3d-views`
+- `POST /mcp/tools/mcp-arch-revit-export-nwc`
 - `POST /api/chat`
 - `GET /api/jobs`
 - `GET /api/jobs/:jobId`
@@ -149,6 +154,13 @@ Notes:
 - default SQLite path: `apps/mcp/data/app.db`
 
 `HOSTS_JSON`, bridge dispatch, MCP mappings, deterministic `/api/chat` routing, and the existing async polling flow are unchanged.
+
+The current deterministic `/api/chat` support now includes:
+
+- Revit health checks
+- Revit session status checks
+- Revit launch requests
+- wall creation with numeric length
 
 ## Backend Docs
 

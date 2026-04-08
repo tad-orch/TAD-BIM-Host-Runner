@@ -26,6 +26,16 @@ function getDbPath(dataDir: string): string {
   return path.join(dataDir, "app.db");
 }
 
+const allEnabledTools = [
+  "revit_ping",
+  "revit_create_wall",
+  "revit_session_status",
+  "revit_launch",
+  "revit_open_cloud_model",
+  "revit_list_3d_views",
+  "revit_export_nwc",
+] as const;
+
 async function waitFor<T>(
   action: () => Promise<T>,
   predicate: (value: T) => boolean,
@@ -291,6 +301,177 @@ test("POST /api/chat returns a deterministic unsupported response when the messa
     assert.match(payload.messages[1].content, /unsupported in the current phase/i);
   } finally {
     await app.close();
+    await fs.rm(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("POST /api/chat routes Revit session checks deterministically and persists conversation messages", async () => {
+  const bridge = Fastify({ logger: false });
+
+  await bridge.post("/tools/revit_session_status", async () => ({
+    status: "completed",
+    result: {
+      isOpen: true,
+      activeVersion: "2025",
+    },
+  }));
+
+  await bridge.listen({ host: "127.0.0.1", port: 0 });
+
+  const dataDir = await createTempDataDir();
+  const app = await buildApp({
+    envOverrides: {
+      DATA_DIR: dataDir,
+      HOSTS_JSON: JSON.stringify([
+        {
+          id: "tad-bim-01",
+          baseUrl: getBaseUrl(bridge.server.address()),
+          machineType: "revit-bridge",
+          capabilities: ["revit"],
+          enabledTools: [...allEnabledTools],
+        },
+      ]),
+    },
+  });
+
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat",
+      payload: {
+        message: "Check Revit session status on the host.",
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+
+    const payload = response.json();
+    assert.equal(payload.tool, "mcp-arch-revit-session-status");
+    assert.equal(payload.job, null);
+    assert.equal(payload.messages.length, 2);
+    assert.equal(payload.messages[1].toolName, "mcp-arch-revit-session-status");
+    assert.equal(payload.messages[1].jobId, null);
+    assert.match(payload.messages[1].content, /session status check completed/i);
+  } finally {
+    await app.close();
+    await bridge.close();
+    await fs.rm(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("POST /api/chat routes Revit launch deterministically and exposes the created job", async () => {
+  const bridge = Fastify({ logger: false });
+  let capturedPayload: Record<string, unknown> | null = null;
+  let pollCount = 0;
+
+  await bridge.post("/tools/revit_launch", async (request) => {
+    capturedPayload = request.body as Record<string, unknown>;
+
+    return {
+      status: "accepted",
+      jobId: "bridge-launch-chat-1",
+    };
+  });
+
+  await bridge.get("/jobs/bridge-launch-chat-1", async () => {
+    pollCount += 1;
+
+    if (pollCount < 2) {
+      return {
+        status: "running",
+      };
+    }
+
+    return {
+      status: "completed",
+      result: {
+        ready: true,
+        version: "2025",
+      },
+    };
+  });
+
+  await bridge.listen({ host: "127.0.0.1", port: 0 });
+
+  const dataDir = await createTempDataDir();
+  const app = await buildApp({
+    envOverrides: {
+      DATA_DIR: dataDir,
+      POLL_INTERVAL_MS: "25",
+      POLL_TIMEOUT_MS: "750",
+      HOSTS_JSON: JSON.stringify([
+        {
+          id: "tad-bim-01",
+          baseUrl: getBaseUrl(bridge.server.address()),
+          machineType: "revit-bridge",
+          capabilities: ["revit"],
+          enabledTools: [...allEnabledTools],
+        },
+      ]),
+    },
+  });
+
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat",
+      payload: {
+        message: "Launch Revit 2025 on the host.",
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+
+    const payload = response.json();
+    assert.equal(payload.tool, "mcp-arch-revit-launch");
+    assert.equal(payload.job.status, "accepted");
+    assert.equal(payload.job.remoteJobId, "bridge-launch-chat-1");
+    assert.equal(payload.messages.length, 2);
+    assert.equal(payload.messages[1].toolName, "mcp-arch-revit-launch");
+    assert.equal(payload.messages[1].jobId, payload.job.jobId);
+    assert.match(payload.messages[1].content, /launch was submitted/i);
+
+    assert.deepEqual(capturedPayload, {
+      requestId: payload.job.requestId,
+      sessionId: "mcp-gateway",
+      source: "mcp-gateway",
+      targetHost: "tad-bim-01",
+      tool: "revit_launch",
+      mode: "async",
+      args: {
+        preferredVersion: "2025",
+        waitForReadySeconds: 60,
+      },
+      meta: {
+        user: "mcp-gateway",
+        timestamp:
+          capturedPayload?.meta && typeof capturedPayload.meta === "object"
+            ? (capturedPayload.meta as Record<string, unknown>).timestamp
+            : null,
+      },
+    });
+
+    const completedJob = await waitFor(
+      async () => {
+        const statusResponse = await app.inject({
+          method: "GET",
+          url: `/jobs/${payload.job.jobId}`,
+        });
+
+        assert.equal(statusResponse.statusCode, 200);
+        return statusResponse.json();
+      },
+      (job) => job.status === "completed",
+      1_500,
+    );
+
+    assert.deepEqual(completedJob.result, {
+      ready: true,
+      version: "2025",
+    });
+  } finally {
+    await app.close();
+    await bridge.close();
     await fs.rm(dataDir, { recursive: true, force: true });
   }
 });

@@ -1,13 +1,28 @@
 import {
+  mapArchRevitExportNwcToInternalArgs,
+  mapArchRevitLaunchToInternalArgs,
+  mapArchRevitList3dViewsToInternalArgs,
+  mapArchRevitOpenCloudModelToInternalArgs,
+  mapArchRevitSessionStatusToInternalArgs,
   mapArchSystemHealthToInternalArgs,
   mapArchWallsCreateToInternalArgs,
 } from "../mapper";
 import {
+  mcpArchRevitExportNwcRequestSchema,
+  mcpArchRevitLaunchRequestSchema,
+  mcpArchRevitList3dViewsRequestSchema,
+  mcpArchRevitOpenCloudModelRequestSchema,
+  mcpArchRevitSessionStatusRequestSchema,
   mcpArchSystemHealthRequestSchema,
   mcpArchWallsCreateRequestSchema,
 } from "../schemas";
 import type {
   AnyMcpToolDefinition,
+  McpArchRevitExportNwcRequest,
+  McpArchRevitLaunchRequest,
+  McpArchRevitList3dViewsRequest,
+  McpArchRevitOpenCloudModelRequest,
+  McpArchRevitSessionStatusRequest,
   McpArchSystemHealthRequest,
   McpArchWallsCreateRequest,
   McpToolCatalog,
@@ -22,6 +37,21 @@ export const archToolCatalog: McpToolCatalog = {
       name: "system",
       description: "Gateway and host reachability tools for Revit architecture nodes.",
       tools: ["mcp-arch-system-health"],
+    },
+    {
+      name: "sessions",
+      description: "Revit session inspection and launch tools for the current operational workflow.",
+      tools: ["mcp-arch-revit-session-status", "mcp-arch-revit-launch"],
+    },
+    {
+      name: "models",
+      description: "Cloud model opening tools for ACC/BIM 360 backed Revit workflows.",
+      tools: ["mcp-arch-revit-open-cloud-model"],
+    },
+    {
+      name: "views",
+      description: "3D view inspection and export preparation tools.",
+      tools: ["mcp-arch-revit-list-3d-views", "mcp-arch-revit-export-nwc"],
     },
     {
       name: "walls",
@@ -52,6 +82,61 @@ const archSystemHealthTool: McpToolDefinition<McpArchSystemHealthRequest> = {
   toInternalArgs: mapArchSystemHealthToInternalArgs,
 };
 
+const archRevitSessionStatusTool: McpToolDefinition<McpArchRevitSessionStatusRequest> = {
+  name: "mcp-arch-revit-session-status",
+  internalTool: "revit_session_status",
+  mode: "sync",
+  namespace: "arch",
+  group: "sessions",
+  description: "Checks whether a Revit session is available on the target host.",
+  schema: mcpArchRevitSessionStatusRequestSchema,
+  toInternalArgs: mapArchRevitSessionStatusToInternalArgs,
+};
+
+const archRevitLaunchTool: McpToolDefinition<McpArchRevitLaunchRequest> = {
+  name: "mcp-arch-revit-launch",
+  internalTool: "revit_launch",
+  mode: "async",
+  namespace: "arch",
+  group: "sessions",
+  description: "Launches Revit on the target host and optionally waits for readiness.",
+  schema: mcpArchRevitLaunchRequestSchema,
+  toInternalArgs: mapArchRevitLaunchToInternalArgs,
+};
+
+const archRevitOpenCloudModelTool: McpToolDefinition<McpArchRevitOpenCloudModelRequest> = {
+  name: "mcp-arch-revit-open-cloud-model",
+  internalTool: "revit_open_cloud_model",
+  mode: "async",
+  namespace: "arch",
+  group: "models",
+  description: "Opens a specific Revit cloud model using explicit project and model identity.",
+  schema: mcpArchRevitOpenCloudModelRequestSchema,
+  toInternalArgs: mapArchRevitOpenCloudModelToInternalArgs,
+};
+
+const archRevitList3dViewsTool: McpToolDefinition<McpArchRevitList3dViewsRequest> = {
+  name: "mcp-arch-revit-list-3d-views",
+  internalTool: "revit_list_3d_views",
+  mode: "sync",
+  namespace: "arch",
+  group: "views",
+  description: "Lists 3D views from the currently open Revit model.",
+  schema: mcpArchRevitList3dViewsRequestSchema,
+  toInternalArgs: mapArchRevitList3dViewsToInternalArgs,
+};
+
+const archRevitExportNwcTool: McpToolDefinition<McpArchRevitExportNwcRequest> = {
+  name: "mcp-arch-revit-export-nwc",
+  internalTool: "revit_export_nwc",
+  mode: "async",
+  namespace: "arch",
+  group: "views",
+  description: "Exports one or more selected 3D views to an NWC file.",
+  schema: mcpArchRevitExportNwcRequestSchema,
+  toInternalArgs: mapArchRevitExportNwcToInternalArgs,
+};
+
 const archWallsCreateTool: McpToolDefinition<McpArchWallsCreateRequest> = {
   name: "mcp-arch-walls-create",
   internalTool: "revit_create_wall",
@@ -63,4 +148,12 @@ const archWallsCreateTool: McpToolDefinition<McpArchWallsCreateRequest> = {
   toInternalArgs: mapArchWallsCreateToInternalArgs,
 };
 
-export const archMcpTools: AnyMcpToolDefinition[] = [archSystemHealthTool, archWallsCreateTool];
+export const archMcpTools: AnyMcpToolDefinition[] = [
+  archSystemHealthTool,
+  archRevitSessionStatusTool,
+  archRevitLaunchTool,
+  archRevitOpenCloudModelTool,
+  archRevitList3dViewsTool,
+  archRevitExportNwcTool,
+  archWallsCreateTool,
+];

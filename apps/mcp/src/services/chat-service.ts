@@ -147,6 +147,26 @@ export class ChatService {
       };
     }
 
+    if (this.isSessionStatusIntent(message)) {
+      return {
+        tool: "mcp-arch-revit-session-status",
+        payload: {
+          targetHost,
+        },
+      };
+    }
+
+    if (this.isLaunchIntent(message)) {
+      return {
+        tool: "mcp-arch-revit-launch",
+        payload: {
+          targetHost,
+          preferredVersion: this.extractLaunchVersion(message),
+          waitForReadySeconds: 60,
+        },
+      };
+    }
+
     if (this.isWallIntent(message)) {
       const length = this.extractWallLength(message);
 
@@ -173,7 +193,7 @@ export class ChatService {
     return {
       tool: null,
       unsupportedReason:
-        "This request is unsupported in the current phase. I can currently check Revit health or create a straight wall with a numeric length.",
+        "This request is unsupported in the current phase. I can currently check Revit health, inspect Revit session status, launch Revit, or create a straight wall with a numeric length.",
     };
   }
 
@@ -190,7 +210,28 @@ export class ChatService {
       normalized.includes("status") ||
       normalized.includes("ping");
 
-    return mentionsEnvironment && mentionsHealth;
+    return mentionsEnvironment && mentionsHealth && !normalized.includes("session");
+  }
+
+  private isSessionStatusIntent(message: string): boolean {
+    const normalized = message.toLowerCase();
+
+    return (
+      normalized.includes("revit") &&
+      (normalized.includes("session") ||
+        /\bis\s+revit\s+open\b/i.test(message) ||
+        /\brevit\s+open\b/i.test(message))
+    );
+  }
+
+  private isLaunchIntent(message: string): boolean {
+    const normalized = message.toLowerCase();
+    const mentionsLaunch =
+      normalized.includes("launch") ||
+      normalized.includes("start") ||
+      /\bopen\s+revit\b/i.test(message);
+
+    return normalized.includes("revit") && mentionsLaunch && !normalized.includes("model");
   }
 
   private isWallIntent(message: string): boolean {
@@ -260,6 +301,11 @@ export class ChatService {
     return match ? Number.parseFloat(match[1]) : null;
   }
 
+  private extractLaunchVersion(message: string): string | undefined {
+    const match = message.match(/\b(20\d{2})\b/);
+    return match?.[1];
+  }
+
   private buildAssistantSuccessMessage(
     tool: McpToolName,
     response: Awaited<ReturnType<McpService["executeTool"]>>,
@@ -269,21 +315,47 @@ export class ChatService {
       return `Revit connectivity check completed for host '${response.targetHost}'.`;
     }
 
-    if (response.status === "accepted" || response.status === "running") {
-      return `Wall creation was submitted on host '${response.targetHost}'. Track local job '${response.jobId}'.`;
+    if (tool === "mcp-arch-revit-session-status") {
+      return `Revit session status check completed for host '${response.targetHost}'.`;
     }
 
-    if (response.status === "completed") {
-      return `Wall creation completed on host '${response.targetHost}'.`;
+    if (tool === "mcp-arch-revit-launch") {
+      if (response.status === "accepted" || response.status === "running") {
+        return `Revit launch was submitted on host '${response.targetHost}'. Track local job '${response.jobId}'.`;
+      }
+
+      if (response.status === "completed") {
+        return `Revit launch completed for host '${response.targetHost}'.`;
+      }
+
+      if (response.status === "failed" || response.status === "timeout") {
+        return `Revit launch did not complete successfully: ${response.error?.message ?? response.status}.`;
+      }
+
+      return job
+        ? `Revit launch status for job '${job.jobId}' is '${job.status}'.`
+        : `Revit launch returned status '${response.status}'.`;
     }
 
-    if (response.status === "failed" || response.status === "timeout") {
-      return `Wall creation did not complete successfully: ${response.error?.message ?? response.status}.`;
+    if (tool === "mcp-arch-walls-create") {
+      if (response.status === "accepted" || response.status === "running") {
+        return `Wall creation was submitted on host '${response.targetHost}'. Track local job '${response.jobId}'.`;
+      }
+
+      if (response.status === "completed") {
+        return `Wall creation completed on host '${response.targetHost}'.`;
+      }
+
+      if (response.status === "failed" || response.status === "timeout") {
+        return `Wall creation did not complete successfully: ${response.error?.message ?? response.status}.`;
+      }
+
+      return job
+        ? `Wall creation status for job '${job.jobId}' is '${job.status}'.`
+        : `Wall creation returned status '${response.status}'.`;
     }
 
-    return job
-      ? `Wall creation status for job '${job.jobId}' is '${job.status}'.`
-      : `Wall creation returned status '${response.status}'.`;
+    return `Tool '${tool}' completed with status '${response.status}'.`;
   }
 
   private buildAssistantErrorMessage(error: unknown, tool: McpToolName, targetHost: string): string {
@@ -291,6 +363,14 @@ export class ChatService {
 
     if (tool === "mcp-arch-system-health") {
       return `I could not check Revit health on host '${targetHost}': ${summary.message}`;
+    }
+
+    if (tool === "mcp-arch-revit-session-status") {
+      return `I could not check Revit session status on host '${targetHost}': ${summary.message}`;
+    }
+
+    if (tool === "mcp-arch-revit-launch") {
+      return `I could not launch Revit on host '${targetHost}': ${summary.message}`;
     }
 
     return `I could not submit wall creation on host '${targetHost}': ${summary.message}`;
