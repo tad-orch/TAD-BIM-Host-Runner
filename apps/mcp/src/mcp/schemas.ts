@@ -8,6 +8,7 @@ import {
   revitWorksetOpenModeSchema,
 } from "../schemas/tools/revit";
 import type {
+  McpArchRevitActivateDocumentRequest,
   McpArchRevitExportNwcRequest,
   McpArchRevitLaunchRequest,
   McpArchRevitList3dViewsRequest,
@@ -148,3 +149,9 @@ export const mcpArchRevitExportNwcRequestSchema = mcpBaseRequestSchema
     exportScope: revitExportScopeSchema.default("selected_views"),
   })
   .strict() satisfies z.ZodType<McpArchRevitExportNwcRequest>;
+
+export const mcpArchRevitActivateDocumentRequestSchema = mcpBaseRequestSchema
+  .extend({
+    documentTitle: z.string().min(1).max(255),
+  })
+  .strict() satisfies z.ZodType<McpArchRevitActivateDocumentRequest>;

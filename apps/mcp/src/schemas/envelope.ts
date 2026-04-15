@@ -36,6 +36,7 @@ export const hostDefinitionSchema = z
           "revit_open_cloud_model",
           "revit_list_3d_views",
           "revit_export_nwc",
+          "revit_activate_document",
         ]),
       )
       .default([]),

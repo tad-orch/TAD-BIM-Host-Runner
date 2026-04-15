@@ -81,6 +81,12 @@ export const revitExportNwcArgsSchema = z
   })
   .strict();
 
+export const revitActivateDocumentArgsSchema = z
+  .object({
+    documentTitle: z.string().min(1).max(255),
+  })
+  .strict();
+
 export type RevitPingArgs = z.infer<typeof revitPingArgsSchema>;
 export type RevitSessionStatusArgs = z.infer<typeof revitSessionStatusArgsSchema>;
 export type RevitPoint = z.infer<typeof revitPointSchema>;
@@ -89,3 +95,4 @@ export type RevitLaunchArgs = z.infer<typeof revitLaunchArgsSchema>;
 export type RevitOpenCloudModelArgs = z.infer<typeof revitOpenCloudModelArgsSchema>;
 export type RevitList3dViewsArgs = z.infer<typeof revitList3dViewsArgsSchema>;
 export type RevitExportNwcArgs = z.infer<typeof revitExportNwcArgsSchema>;
+export type RevitActivateDocumentArgs = z.infer<typeof revitActivateDocumentArgsSchema>;

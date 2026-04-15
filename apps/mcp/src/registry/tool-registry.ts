@@ -1,6 +1,7 @@
 import { z, type ZodType } from "zod";
 
 import {
+  revitActivateDocumentArgsSchema,
   revitCreateWallArgsSchema,
   revitExportNwcArgsSchema,
   revitLaunchArgsSchema,
@@ -160,6 +161,19 @@ export function createToolRegistry(env: Env): ToolRegistry {
       viewNames: args.viewNames,
       outputPath: args.outputPath,
       exportScope: args.exportScope,
+    }),
+  });
+
+  tools.set("revit_activate_document", {
+    name: "revit_activate_document",
+    mode: "sync",
+    argsSchema: revitActivateDocumentArgsSchema,
+    bridge: {
+      submitPath: "/tools/revit_activate_document",
+    },
+    timeoutMs: env.BRIDGE_REQUEST_TIMEOUT_MS,
+    summarizeArgs: (args: z.infer<typeof revitActivateDocumentArgsSchema>) => ({
+      documentTitle: args.documentTitle,
     }),
   });
 

@@ -1,4 +1,5 @@
 import {
+  mapArchRevitActivateDocumentToInternalArgs,
   mapArchRevitExportNwcToInternalArgs,
   mapArchRevitLaunchToInternalArgs,
   mapArchRevitList3dViewsToInternalArgs,
@@ -8,6 +9,7 @@ import {
   mapArchWallsCreateToInternalArgs,
 } from "../mapper";
 import {
+  mcpArchRevitActivateDocumentRequestSchema,
   mcpArchRevitExportNwcRequestSchema,
   mcpArchRevitLaunchRequestSchema,
   mcpArchRevitList3dViewsRequestSchema,
@@ -18,6 +20,7 @@ import {
 } from "../schemas";
 import type {
   AnyMcpToolDefinition,
+  McpArchRevitActivateDocumentRequest,
   McpArchRevitExportNwcRequest,
   McpArchRevitLaunchRequest,
   McpArchRevitList3dViewsRequest,
@@ -46,7 +49,7 @@ export const archToolCatalog: McpToolCatalog = {
     {
       name: "models",
       description: "Cloud model opening tools for ACC/BIM 360 backed Revit workflows.",
-      tools: ["mcp-arch-revit-open-cloud-model"],
+      tools: ["mcp-arch-revit-open-cloud-model", "mcp-arch-revit-activate-document"],
     },
     {
       name: "views",
@@ -148,11 +151,23 @@ const archWallsCreateTool: McpToolDefinition<McpArchWallsCreateRequest> = {
   toInternalArgs: mapArchWallsCreateToInternalArgs,
 };
 
+const archRevitActivateDocumentTool: McpToolDefinition<McpArchRevitActivateDocumentRequest> = {
+  name: "mcp-arch-revit-activate-document",
+  internalTool: "revit_activate_document",
+  mode: "sync",
+  namespace: "arch",
+  group: "models",
+  description: "Activates a specific open document in the current Revit session by title.",
+  schema: mcpArchRevitActivateDocumentRequestSchema,
+  toInternalArgs: mapArchRevitActivateDocumentToInternalArgs,
+};
+
 export const archMcpTools: AnyMcpToolDefinition[] = [
   archSystemHealthTool,
   archRevitSessionStatusTool,
   archRevitLaunchTool,
   archRevitOpenCloudModelTool,
+  archRevitActivateDocumentTool,
   archRevitList3dViewsTool,
   archRevitExportNwcTool,
   archWallsCreateTool,

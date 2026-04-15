@@ -1,5 +1,6 @@
 import { createRequestId } from "../lib/ids";
 import type {
+  RevitActivateDocumentArgs,
   RevitCreateWallArgs,
   RevitExportNwcArgs,
   RevitLaunchArgs,
@@ -9,6 +10,7 @@ import type {
   RevitSessionStatusArgs,
 } from "../schemas/tools/revit";
 import type {
+  McpArchRevitActivateDocumentRequest,
   McpArchRevitExportNwcRequest,
   McpArchRevitLaunchRequest,
   McpArchRevitList3dViewsRequest,
@@ -91,6 +93,14 @@ export function mapArchRevitExportNwcToInternalArgs(
     viewNames: input.viewNames,
     outputPath: input.outputPath,
     exportScope: input.exportScope,
+  };
+}
+
+export function mapArchRevitActivateDocumentToInternalArgs(
+  input: McpArchRevitActivateDocumentRequest,
+): RevitActivateDocumentArgs {
+  return {
+    documentTitle: input.documentTitle,
   };
 }
 

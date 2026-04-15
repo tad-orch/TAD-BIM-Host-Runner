@@ -12,7 +12,8 @@ export type McpToolName =
   | "mcp-arch-revit-launch"
   | "mcp-arch-revit-open-cloud-model"
   | "mcp-arch-revit-list-3d-views"
-  | "mcp-arch-revit-export-nwc";
+  | "mcp-arch-revit-export-nwc"
+  | "mcp-arch-revit-activate-document";
 
 export interface McpBaseRequest {
   requestId?: string;
@@ -68,6 +69,10 @@ export interface McpArchRevitExportNwcRequest extends McpBaseRequest {
   viewNames: string[];
   outputPath: string;
   exportScope: "selected_views";
+}
+
+export interface McpArchRevitActivateDocumentRequest extends McpBaseRequest {
+  documentTitle: string;
 }
 
 export interface McpToolGroupDefinition {

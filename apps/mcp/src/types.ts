@@ -17,7 +17,8 @@ export type ToolName =
   | "revit_launch"
   | "revit_open_cloud_model"
   | "revit_list_3d_views"
-  | "revit_export_nwc";
+  | "revit_export_nwc"
+  | "revit_activate_document";
 
 export interface HostDefinition {
   id: string;
